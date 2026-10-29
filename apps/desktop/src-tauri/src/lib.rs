@@ -105,7 +105,13 @@ pub fn run() {
 }
 
 fn setup(app: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
-    let settings_path = app.path().app_config_dir()?.join("settings.json");
+    // Demo mode keeps its own settings, so trying it never changes the real ones.
+    let file = if is_demo() {
+        "settings-demo.json"
+    } else {
+        "settings.json"
+    };
+    let settings_path = app.path().app_config_dir()?.join(file);
     let settings = state::load_settings(&settings_path);
     let (backend, sources, audio_backend, cast_backend) = create_backends();
     log::info!(
@@ -211,6 +217,10 @@ fn route_laptop_audio(app: &AppHandle, views: &[DeviceView]) {
     }
 }
 
+fn is_demo() -> bool {
+    std::env::var(DEMO_ENV).is_ok_and(|value| value == "1")
+}
+
 type Backends = (
     Arc<dyn DeviceBackend>,
     Arc<dyn SourceBackend>,
@@ -219,7 +229,7 @@ type Backends = (
 );
 
 fn create_backends() -> Backends {
-    let demo = std::env::var(DEMO_ENV).is_ok_and(|value| value == "1");
+    let demo = is_demo();
     #[cfg(windows)]
     if !demo {
         return (
