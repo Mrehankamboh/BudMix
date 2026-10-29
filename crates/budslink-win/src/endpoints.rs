@@ -5,8 +5,8 @@ use windows::Win32::Devices::FunctionDiscovery::{
 };
 use windows::Win32::Foundation::PROPERTYKEY;
 use windows::Win32::Media::Audio::{
-    DEVICE_STATE, DEVICE_STATE_ACTIVE, DEVICE_STATE_UNPLUGGED, IConnector, IDeviceTopology,
-    IMMDevice, IMMDeviceEnumerator, IPart, eRender,
+    DEVICE_STATE, DEVICE_STATE_ACTIVE, DEVICE_STATE_UNPLUGGED, EDataFlow, IConnector,
+    IDeviceTopology, IMMDevice, IMMDeviceEnumerator, IPart, eRender,
 };
 use windows::Win32::System::Com::StructuredStorage::{
     PropVariantClear, PropVariantToGUID, PropVariantToStringAlloc,
@@ -21,15 +21,29 @@ use crate::com::take_pwstr;
 /// All Bluetooth render endpoints that are connected (`ACTIVE`) or paired
 /// but disconnected (`UNPLUGGED`). Endpoints that fail to read are skipped.
 pub(crate) fn bluetooth_endpoints(enumerator: &IMMDeviceEnumerator) -> Result<Vec<EndpointInfo>> {
-    // SAFETY: COM calls on a live enumerator; results are owned wrappers.
     let states = DEVICE_STATE(DEVICE_STATE_ACTIVE.0 | DEVICE_STATE_UNPLUGGED.0);
-    let collection = unsafe { enumerator.EnumAudioEndpoints(eRender, states)? };
+    let endpoints = bluetooth_endpoints_with_ids(enumerator, eRender, states)?;
+    Ok(endpoints.into_iter().map(|(_, info)| info).collect())
+}
+
+/// Bluetooth endpoints of one data flow and state, with their Core Audio
+/// endpoint ids (the ids `IMMDeviceEnumerator::GetDevice` accepts).
+pub(crate) fn bluetooth_endpoints_with_ids(
+    enumerator: &IMMDeviceEnumerator,
+    flow: EDataFlow,
+    states: DEVICE_STATE,
+) -> Result<Vec<(String, EndpointInfo)>> {
+    // SAFETY: COM calls on a live enumerator; results are owned wrappers.
+    let collection = unsafe { enumerator.EnumAudioEndpoints(flow, states)? };
     let count = unsafe { collection.GetCount()? };
     let mut endpoints = Vec::new();
     for index in 0..count {
-        let endpoint = unsafe { collection.Item(index) }.and_then(|device| read_endpoint(&device));
+        let endpoint = unsafe { collection.Item(index) }.and_then(|device| {
+            let info = read_endpoint(&device)?;
+            Ok(info.zip(endpoint_id(&device)))
+        });
         match endpoint {
-            Ok(Some(info)) => endpoints.push(info),
+            Ok(Some((info, id))) => endpoints.push((id, info)),
             Ok(None) => {}
             Err(err) => log::debug!("skipping audio endpoint {index}: {err}"),
         }
@@ -105,4 +119,18 @@ fn read_guid(store: &IPropertyStore, key: &PROPERTYKEY) -> Option<GUID> {
         let _ = PropVariantClear(&mut value);
         guid.filter(|guid| *guid != GUID::zeroed())
     }
+}
+
+/// The endpoint's Core Audio id.
+pub(crate) fn endpoint_id(device: &IMMDevice) -> Option<String> {
+    // SAFETY: the returned string is freed by `take_pwstr`.
+    unsafe { device.GetId().ok().and_then(|id| take_pwstr(id)) }
+}
+
+/// The endpoint's friendly name, e.g. "Headphones (TWS)".
+pub(crate) fn endpoint_name(device: &IMMDevice) -> Option<String> {
+    // SAFETY: COM call on a live device.
+    let store = unsafe { device.OpenPropertyStore(STGM_READ) }.ok()?;
+    read_string(&store, &PKEY_Device_FriendlyName)
+        .or_else(|| read_string(&store, &PKEY_DeviceInterface_FriendlyName))
 }

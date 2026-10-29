@@ -8,6 +8,7 @@ use crate::backend::{BackendError, ChangeNotifier, DeviceBackend, Watch};
 use crate::bridge::{AudioSource, SourceBackend, UnavailableSource};
 use crate::controller::Action;
 use crate::device::{AudioDevice, AudioProfile, DeviceId};
+use crate::routing::{AudioBackend, Endpoint};
 
 /// How the fake responds to connect/disconnect requests.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -288,6 +289,125 @@ impl SourceBackend for FakeSourceBackend {
 
     fn close(&self, id: &DeviceId) -> Result<(), BackendError> {
         self.set_streaming(id, false)
+    }
+
+    fn watch(&self, notify: ChangeNotifier) -> Result<Watch, BackendError> {
+        *lock(&self.notifier) = Some(notify);
+        Ok(Watch::new(SourceWatchGuard(Arc::clone(&self.notifier))))
+    }
+}
+
+const TONE_PLAYBACK: Duration = Duration::from_millis(700);
+
+/// An [`AudioBackend`] with a speaker output and buds that are connected
+/// either always ([`FakeAudioBackend::new`]) or whenever a [`FakeBackend`]
+/// says so ([`FakeAudioBackend::linked`], used by demo mode).
+pub struct FakeAudioBackend {
+    devices: Option<FakeBackend>,
+    default: Mutex<Option<String>>,
+    call_mode: Mutex<bool>,
+    tones: Mutex<Vec<Option<String>>>,
+    tone_delay: Duration,
+    notifier: Arc<Mutex<Option<ChangeNotifier>>>,
+}
+
+impl FakeAudioBackend {
+    pub const BUDS: &str = "demo-buds";
+    pub const BUDS_ENDPOINT: &str = "endpoint-demo-buds";
+    pub const SPEAKERS_ENDPOINT: &str = "endpoint-speakers";
+
+    /// Every buds id counts as connected; the speakers start as default.
+    pub fn new() -> Self {
+        Self {
+            devices: None,
+            default: Mutex::new(Some(Self::SPEAKERS_ENDPOINT.to_owned())),
+            call_mode: Mutex::new(false),
+            tones: Mutex::new(Vec::new()),
+            tone_delay: Duration::ZERO,
+            notifier: Arc::default(),
+        }
+    }
+
+    /// Buds are connected when `devices` lists them as connected.
+    pub fn linked(devices: FakeBackend) -> Self {
+        Self {
+            devices: Some(devices),
+            tone_delay: TONE_PLAYBACK,
+            ..Self::new()
+        }
+    }
+
+    pub fn default_id(&self) -> Option<String> {
+        lock(&self.default).clone()
+    }
+
+    /// Simulates the user picking another output in Windows.
+    pub fn set_default(&self, endpoint: Option<&str>) {
+        *lock(&self.default) = endpoint.map(str::to_owned);
+        let notifier = lock(&self.notifier).clone();
+        if let Some(notifier) = notifier {
+            notifier();
+        }
+    }
+
+    pub fn set_call_mode(&self, active: bool) {
+        *lock(&self.call_mode) = active;
+    }
+
+    /// The endpoints the test tone was played on, in order.
+    pub fn tones(&self) -> Vec<Option<String>> {
+        lock(&self.tones).clone()
+    }
+}
+
+impl Default for FakeAudioBackend {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl AudioBackend for FakeAudioBackend {
+    fn default_output(&self) -> Result<Option<Endpoint>, BackendError> {
+        Ok(self.default_id().map(|id| {
+            let name = match id.strip_prefix("endpoint-") {
+                Some("speakers") => "Demo Laptop Speakers".to_owned(),
+                Some(buds) => format!("Headphones ({buds})"),
+                None => id.clone(),
+            };
+            Endpoint::new(id, name)
+        }))
+    }
+
+    fn buds_output(&self, buds: &DeviceId) -> Result<Option<Endpoint>, BackendError> {
+        let name = match &self.devices {
+            None => format!("Headphones ({buds})"),
+            Some(devices) => {
+                let connected = devices
+                    .list_devices()?
+                    .into_iter()
+                    .find(|device| &device.id == buds && device.connected);
+                match connected {
+                    Some(device) => format!("Headphones ({})", device.name),
+                    None => return Ok(None),
+                }
+            }
+        };
+        Ok(Some(Endpoint::new(format!("endpoint-{buds}"), name)))
+    }
+
+    fn set_default_output(&self, endpoint_id: &str) -> Result<(), BackendError> {
+        self.set_default(Some(endpoint_id));
+        Ok(())
+    }
+
+    fn call_mode(&self, _buds: &DeviceId) -> Result<bool, BackendError> {
+        Ok(*lock(&self.call_mode))
+    }
+
+    fn play_tone(&self, endpoint_id: Option<&str>) -> Result<(), BackendError> {
+        lock(&self.tones).push(endpoint_id.map(str::to_owned));
+        thread::sleep(self.tone_delay);
+        Ok(())
     }
 
     fn watch(&self, notify: ChangeNotifier) -> Result<Watch, BackendError> {

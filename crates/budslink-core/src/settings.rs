@@ -34,6 +34,12 @@ pub struct Settings {
     pub start_with_windows: bool,
     /// Phones whose audio is bridged through the laptop (bridge mode).
     pub bridged_phones: Vec<DeviceId>,
+    /// Make the connected buds the default output, so all laptop audio
+    /// plays in them.
+    pub route_laptop_audio: bool,
+    /// The default output before BudsLink switched to the buds, restored
+    /// later (kept here so it survives a crash or restart).
+    pub saved_output: Option<String>,
 }
 
 impl Default for Settings {
@@ -47,6 +53,8 @@ impl Default for Settings {
             toggle_hotkey: Some("Ctrl+Alt+B".to_owned()),
             start_with_windows: false,
             bridged_phones: Vec::new(),
+            route_laptop_audio: true,
+            saved_output: None,
         }
     }
 }
@@ -94,6 +102,7 @@ impl Settings {
             .retain(|id| !id.as_str().trim().is_empty());
         self.bridged_phones.sort();
         self.bridged_phones.dedup();
+        self.saved_output = self.saved_output.filter(|id| !id.trim().is_empty());
         self
     }
 
@@ -143,6 +152,19 @@ mod tests {
         let settings = Settings::load(&path).unwrap();
         assert!(!settings.auto_reconnect);
         assert_eq!(settings.toggle_hotkey.as_deref(), Some("Ctrl+Alt+B"));
+        // Files written before laptop-audio routing existed turn it on.
+        assert!(settings.route_laptop_audio);
+        assert_eq!(settings.saved_output, None);
+    }
+
+    #[test]
+    fn blank_saved_output_is_dropped() {
+        let settings = Settings {
+            saved_output: Some("  ".into()),
+            ..Settings::default()
+        }
+        .sanitized();
+        assert_eq!(settings.saved_output, None);
     }
 
     #[test]

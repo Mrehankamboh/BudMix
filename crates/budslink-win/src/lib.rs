@@ -10,6 +10,9 @@
 //! * Bridge mode: receives a paired phone's audio with
 //!   `AudioPlaybackConnection` ([`PhoneAudioBackend`]), and lists paired
 //!   phones Windows won't stream from.
+//! * Laptop audio in the buds ([`WindowsAudioBackend`]): makes the buds the
+//!   default output, checks for call mode (hands-free) and plays the test
+//!   tone.
 //!
 //! Only [`classify`] and [`paired`] are compiled on other platforms, so their
 //! logic is tested everywhere.
@@ -17,6 +20,8 @@
 pub mod classify;
 pub mod paired;
 
+#[cfg(windows)]
+mod audio;
 #[cfg(windows)]
 mod backend;
 #[cfg(windows)]
@@ -33,7 +38,13 @@ mod notify;
 mod os;
 #[cfg(windows)]
 mod phone;
+#[cfg(windows)]
+mod policy;
+#[cfg(windows)]
+mod tone;
 
+#[cfg(windows)]
+pub use audio::WindowsAudioBackend;
 #[cfg(windows)]
 pub use backend::WindowsBackend;
 #[cfg(windows)]

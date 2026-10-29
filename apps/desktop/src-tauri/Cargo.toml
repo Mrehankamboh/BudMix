@@ -1,0 +1,35 @@
+[package]
+name = "budslink-desktop"
+description = "BudsLink desktop app: tray, hotkeys and UI for switching Bluetooth buds."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+[lib]
+name = "budslink_desktop"
+
+[[bin]]
+name = "budslink"
+path = "src/main.rs"
+
+[build-dependencies]
+tauri-build = { version = "2.7", features = [] }
+
+[dependencies]
+budslink-core = { workspace = true, features = ["fake"] }
+log.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+tauri = { version = "2.12", features = ["tray-icon", "image-png"] }
+tauri-plugin-autostart = "2.7"
+tauri-plugin-global-shortcut = "2.4"
+tauri-plugin-log = "2.10"
+tauri-plugin-single-instance = "2.5"
+
+[target.'cfg(windows)'.dependencies]
+budslink-win.workspace = true
+
+[lints]
+workspace = true

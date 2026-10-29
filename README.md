@@ -2,9 +2,9 @@
 
 **Hear your laptop and your phone in the same Bluetooth earbuds at the same time, even buds without multipoint. Nothing to install on the phone.**
 
-> **Status: early development (milestone M0).** Right now the repository holds
-> the shared core (from BudsBridge) and a probe that checks whether this
-> laptop can receive a phone's Miracast cast. The tray app comes in M1.
+> **Status: early development (milestones M0 and M1 written, not yet built).** The repository holds
+> the shared core (from BudsBridge), the tray app with laptop audio in the buds, and a probe
+> that checks whether this laptop can receive a phone's Miracast cast.
 
 ## How it works
 
@@ -32,7 +32,7 @@
 | Milestone | Scope | Status |
 |---|---|---|
 | M0 | Miracast receiver probe (`cast-probe`) | code written, awaiting first build and hardware test |
-| M1 | Tray app: buds auto-connect/reconnect, laptop audio in buds, test tone, demo mode | planned |
+| M1 | Tray app: buds auto-connect/reconnect, laptop audio in buds, test tone, call-mode warning, demo mode | code written; UI tests pass; Rust not built yet |
 | M2 | Setup wizard and diagnostics | planned |
 | M3 | Miracast receiver inside the app, video window, approvals | planned |
 | M4 | Bluetooth phone fallback, Auto Wi-Fi/Bluetooth switching, per-source volume | planned |
@@ -53,6 +53,13 @@ Infinix/Android phone: [docs/CONNECT_PHONE.md](docs/CONNECT_PHONE.md).
 - Some laptop Wi-Fi cards cannot receive Miracast; then the phone uses
   Bluetooth.
 - Some DRM apps (for example Netflix) may block casting.
+- BudsLink makes the buds the default output for media and general sound,
+  but leaves the separate "communications" default alone: call apps that use
+  it usually open the mic too, which drops classic Bluetooth buds to
+  low-quality call mode (HFP). The dock warns when that happens.
+- Switching the default output uses `IPolicyConfig`, an undocumented Windows
+  interface (also used by the Sound control panel and tools like EarTrumpet).
+  If a Windows update breaks it, BudsLink shows the error instead of hiding it.
 - Ringtones and notification sounds usually keep playing on the phone itself;
   Android sends media audio to the cast.
 

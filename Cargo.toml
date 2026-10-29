@@ -4,6 +4,13 @@ members = [
     "crates/budslink-core",
     "crates/budslink-win",
     "crates/budslink-miracast",
+    "apps/desktop/src-tauri",
+]
+# The desktop app needs a webview toolchain; plain `cargo test` covers the libraries.
+default-members = [
+    "crates/budslink-core",
+    "crates/budslink-win",
+    "crates/budslink-miracast",
 ]
 
 [workspace.package]

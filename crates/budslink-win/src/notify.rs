@@ -1,10 +1,11 @@
-//! Endpoint change notifications (connect, disconnect, pair, unpair).
+//! Endpoint change notifications (connect, disconnect, pair, unpair, and a
+//! new default playback device).
 
 use budslink_core::ChangeNotifier;
 use windows::Win32::Foundation::PROPERTYKEY;
 use windows::Win32::Media::Audio::{
     DEVICE_STATE, EDataFlow, ERole, IMMDeviceEnumerator, IMMNotificationClient,
-    IMMNotificationClient_Impl,
+    IMMNotificationClient_Impl, eRender,
 };
 use windows::core::{PCWSTR, Result, implement};
 
@@ -33,7 +34,11 @@ impl IMMNotificationClient_Impl for EndpointListener_Impl {
         Ok(())
     }
 
-    fn OnDefaultDeviceChanged(&self, _flow: EDataFlow, _role: ERole, _id: &PCWSTR) -> Result<()> {
+    fn OnDefaultDeviceChanged(&self, flow: EDataFlow, _role: ERole, _id: &PCWSTR) -> Result<()> {
+        // The laptop-audio router follows the default playback device.
+        if flow == eRender {
+            (self.notify)();
+        }
         Ok(())
     }
 

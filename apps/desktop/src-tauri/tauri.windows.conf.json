@@ -1,0 +1,12 @@
+{
+  "bundle": {
+    "targets": ["nsis"],
+    "windows": {
+      "nsis": {
+        "installerIcon": "icons/icon.ico",
+        "sidebarImage": "icons/installer/sidebar.bmp",
+        "headerImage": "icons/installer/header.bmp"
+      }
+    }
+  }
+}

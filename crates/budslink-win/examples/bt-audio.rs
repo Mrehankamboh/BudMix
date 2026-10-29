@@ -6,6 +6,9 @@
 //! cargo run -p budslink-win --example bt-audio -- connect "{container-guid}"
 //! cargo run -p budslink-win --example bt-audio -- disconnect "{container-guid}"
 //! cargo run -p budslink-win --example bt-audio -- watch
+//! cargo run -p budslink-win --example bt-audio -- status "{container-guid}"
+//! cargo run -p budslink-win --example bt-audio -- tone ["{container-guid}"]
+//! cargo run -p budslink-win --example bt-audio -- make-default "{container-guid}"
 //! ```
 
 #[cfg(windows)]
@@ -13,8 +16,10 @@ fn main() {
     use std::sync::Arc;
     use std::time::{Duration, Instant};
 
-    use budslink_core::{DeviceBackend, DeviceId};
-    use budslink_win::WindowsBackend;
+    use budslink_core::{AudioBackend, DeviceBackend, DeviceId};
+    use budslink_win::{WindowsAudioBackend, WindowsBackend};
+
+    let audio = WindowsAudioBackend::new();
 
     let backend = WindowsBackend::new();
     let args: Vec<String> = std::env::args().skip(1).collect();
@@ -84,8 +89,75 @@ fn main() {
                 print(&backend);
             }
         }
+        Some("status") => {
+            match audio.default_output() {
+                Ok(Some(output)) => println!("default output: {}  ({})", output.name, output.id),
+                Ok(None) => println!("default output: none"),
+                Err(err) => eprintln!("reading the default output failed: {err}"),
+            }
+            if let Some(id) = args.get(1).map(DeviceId::new) {
+                match audio.buds_output(&id) {
+                    Ok(Some(output)) => println!("buds output:    {}  ({})", output.name, output.id),
+                    Ok(None) => println!("buds output:    none (not connected?)"),
+                    Err(err) => eprintln!("finding the buds output failed: {err}"),
+                }
+                match audio.call_mode(&id) {
+                    Ok(true) => println!("call mode:      YES, an app is using the buds' mic (HFP)"),
+                    Ok(false) => println!("call mode:      no (stereo quality)"),
+                    Err(err) => eprintln!("call-mode check failed: {err}"),
+                }
+            }
+        }
+        Some("tone") => {
+            let target = match args.get(1).map(DeviceId::new) {
+                Some(id) => match audio.buds_output(&id) {
+                    Ok(Some(output)) => Some(output.id),
+                    Ok(None) => {
+                        eprintln!("those buds are not connected");
+                        std::process::exit(1);
+                    }
+                    Err(err) => {
+                        eprintln!("finding the buds output failed: {err}");
+                        std::process::exit(1);
+                    }
+                },
+                None => None,
+            };
+            println!("Playing a 440 Hz beep...");
+            if let Err(err) = audio.play_tone(target.as_deref()) {
+                eprintln!("playing the beep failed: {err}");
+                std::process::exit(1);
+            }
+            println!("Done. Did you hear it?");
+        }
+        Some("make-default") => {
+            let Some(id) = args.get(1).map(DeviceId::new) else {
+                eprintln!("usage: bt-audio make-default <device id from `list`>");
+                std::process::exit(2);
+            };
+            let output = match audio.buds_output(&id) {
+                Ok(Some(output)) => output,
+                Ok(None) => {
+                    eprintln!("those buds are not connected");
+                    std::process::exit(1);
+                }
+                Err(err) => {
+                    eprintln!("finding the buds output failed: {err}");
+                    std::process::exit(1);
+                }
+            };
+            match audio.set_default_output(&output.id) {
+                Ok(()) => println!("{} is now the default output.", output.name),
+                Err(err) => {
+                    eprintln!("changing the default output failed: {err}");
+                    std::process::exit(1);
+                }
+            }
+        }
         Some(other) => {
-            eprintln!("unknown command `{other}`; use list, connect, disconnect or watch");
+            eprintln!(
+                "unknown command `{other}`; use list, connect, disconnect, watch, status, tone or make-default"
+            );
             std::process::exit(2);
         }
     }

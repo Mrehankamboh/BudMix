@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <!-- Tray icon, no buds connected: outlined. -->
+  <path d="M260 540 C 330 250, 694 250, 764 540" fill="none" stroke="#8a8a8a" stroke-width="80" stroke-linecap="round"/>
+  <circle cx="260" cy="680" r="150" fill="none" stroke="#8a8a8a" stroke-width="80"/>
+  <circle cx="764" cy="680" r="150" fill="none" stroke="#8a8a8a" stroke-width="80"/>
+</svg>
