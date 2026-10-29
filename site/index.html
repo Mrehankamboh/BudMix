@@ -1,0 +1,413 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>BudsLink</title>
+  <meta name="description" content="Hear your laptop and your phone in the same Bluetooth buds at the same time, even buds without multipoint. Free Windows 11 app, nothing to install on the phone.">
+  <link rel="icon" type="image/png" href="assets/favicon.png">
+  <style>
+    :root {
+      --bg: #f7f7f9;
+      --surface: #ffffff;
+      --surface-2: #f0f0f3;
+      --text: #18181c;
+      --text-2: #5d5d66;
+      --line: #e3e3e8;
+      --accent: #2f6fd6;
+      --accent-ink: #ffffff;
+      --phone: #1f9d5c;
+      --busy: #b7791f;
+      --shadow: 0 1px 2px rgb(0 0 0 / 0.04), 0 8px 24px rgb(0 0 0 / 0.06);
+      color-scheme: light;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) {
+        --bg: #111114;
+        --surface: #1a1a1f;
+        --surface-2: #232329;
+        --text: #f1f1f4;
+        --text-2: #a5a5b0;
+        --line: #2e2e36;
+        --accent: #80b8ff;
+        --accent-ink: #0b1a2e;
+        --phone: #73db9e;
+        --busy: #ffc75c;
+        --shadow: 0 1px 2px rgb(0 0 0 / 0.3), 0 8px 24px rgb(0 0 0 / 0.35);
+        color-scheme: dark;
+      }
+    }
+    :root[data-theme="dark"] {
+      --bg: #111114;
+      --surface: #1a1a1f;
+      --surface-2: #232329;
+      --text: #f1f1f4;
+      --text-2: #a5a5b0;
+      --line: #2e2e36;
+      --accent: #80b8ff;
+      --accent-ink: #0b1a2e;
+      --phone: #73db9e;
+      --busy: #ffc75c;
+      --shadow: 0 1px 2px rgb(0 0 0 / 0.3), 0 8px 24px rgb(0 0 0 / 0.35);
+      color-scheme: dark;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font: 16px/1.6 "Segoe UI Variable", "Segoe UI", system-ui, -apple-system, sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+    a { color: var(--accent); }
+    img { max-width: 100%; }
+    .wrap { width: min(1080px, 100% - 32px); margin-inline: auto; }
+
+    /* nav */
+    .nav { position: sticky; top: 0; z-index: 10; background: color-mix(in srgb, var(--bg) 85%, transparent); backdrop-filter: blur(12px); border-bottom: 1px solid var(--line); }
+    .nav .wrap { display: flex; align-items: center; gap: 20px; height: 60px; }
+    .brand { display: flex; align-items: center; gap: 10px; color: var(--text); text-decoration: none; font-weight: 650; font-size: 17px; }
+    .brand img { width: 28px; height: 28px; }
+    .nav__links { display: flex; gap: 20px; margin-left: auto; }
+    .nav__links a { color: var(--text-2); text-decoration: none; font-size: 14px; }
+    .nav__links a:hover { color: var(--text); }
+    @media (max-width: 720px) { .nav__links { display: none; } .nav .button { margin-left: auto; } }
+
+    /* buttons */
+    .button { display: inline-flex; align-items: center; gap: 8px; padding: 10px 18px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); color: var(--text); font: inherit; font-size: 15px; font-weight: 600; text-decoration: none; transition: transform .15s ease, filter .15s ease; }
+    .button:hover { transform: translateY(-1px); }
+    .button--accent { background: var(--accent); color: var(--accent-ink); border-color: transparent; }
+    .button--accent:hover { filter: brightness(1.06); }
+    .button--small { padding: 6px 12px; font-size: 14px; }
+
+    /* hero */
+    .hero { padding: 72px 0 56px; scroll-margin-top: 60px; }
+    .hero .wrap { display: grid; grid-template-columns: 1.05fr 1fr; gap: 48px; align-items: center; }
+    @media (max-width: 860px) { .hero .wrap { grid-template-columns: 1fr; gap: 32px; } .hero { padding-top: 40px; } }
+    .eyebrow { display: inline-block; margin-bottom: 14px; padding: 4px 10px; border-radius: 999px; background: color-mix(in srgb, var(--phone) 14%, transparent); color: var(--phone); font-size: 13px; font-weight: 600; }
+    h1 { margin: 0 0 16px; font-size: clamp(34px, 5.2vw, 54px); line-height: 1.08; letter-spacing: -0.02em; }
+    .lead { margin: 0 0 28px; color: var(--text-2); font-size: 18px; max-width: 34em; }
+    .cta { display: flex; flex-wrap: wrap; gap: 12px; }
+    .facts { display: flex; flex-wrap: wrap; gap: 8px 18px; margin: 22px 0 0; padding: 0; list-style: none; color: var(--text-2); font-size: 14px; }
+    .facts li::before { content: "✓ "; color: var(--phone); font-weight: 700; }
+
+    /* diagram */
+    .stage { position: relative; padding: 28px; border: 1px solid var(--line); border-radius: 20px; background: var(--surface); box-shadow: var(--shadow); }
+    .stage svg { display: block; width: 100%; height: auto; }
+    .stage__caption { margin: 14px 0 0; text-align: center; color: var(--text-2); font-size: 14px; }
+    .stage__count { position: absolute; top: 16px; right: 18px; padding: 3px 10px; border-radius: 999px; background: var(--surface-2); font-size: 12px; font-weight: 600; color: var(--text-2); }
+    .node { fill: var(--surface-2); stroke: var(--line); stroke-width: 1.5; }
+    .node-label { fill: var(--text); font: 600 13px "Segoe UI", system-ui, sans-serif; text-anchor: middle; }
+    .node-sub { fill: var(--text-2); font: 11px "Segoe UI", system-ui, sans-serif; text-anchor: middle; }
+    .icon-line { fill: none; stroke: var(--text); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+    .link { fill: none; stroke-width: 3; stroke-linecap: round; }
+    .link--phone { stroke: color-mix(in srgb, var(--phone) 35%, transparent); }
+    .link--buds { stroke: color-mix(in srgb, var(--accent) 35%, transparent); }
+    .pulse { stroke-dasharray: 2 16; stroke-width: 4; animation: flow 1.1s linear infinite; }
+    .pulse--phone { stroke: var(--phone); }
+    .pulse--buds { stroke: var(--accent); }
+    .link-label { font: 600 11px "Segoe UI", system-ui, sans-serif; text-anchor: middle; }
+    .link-label--phone { fill: var(--phone); }
+    .link-label--buds { fill: var(--accent); }
+    @keyframes flow { to { stroke-dashoffset: -18; } }
+    @media (prefers-reduced-motion: reduce) { .pulse { animation: none; } .button:hover { transform: none; } }
+
+    /* sections */
+    section { padding: 64px 0; scroll-margin-top: 60px; }
+    section.alt { background: var(--surface); border-block: 1px solid var(--line); }
+    h2 { margin: 0 0 12px; font-size: clamp(26px, 3.4vw, 34px); letter-spacing: -0.01em; line-height: 1.2; }
+    .section-lead { margin: 0 0 32px; color: var(--text-2); max-width: 44em; }
+    .grid { display: grid; gap: 16px; }
+    .grid--3 { grid-template-columns: repeat(3, 1fr); }
+    .grid--2 { grid-template-columns: repeat(2, 1fr); }
+    .grid--4 { grid-template-columns: repeat(4, 1fr); }
+    @media (max-width: 900px) { .grid--4 { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 760px) { .grid--3, .grid--2, .grid--4 { grid-template-columns: 1fr; } }
+    .card { padding: 22px; border: 1px solid var(--line); border-radius: 16px; background: var(--surface); }
+    section.alt .card { background: var(--bg); }
+    .card h3 { margin: 0 0 6px; font-size: 17px; }
+    .card p { margin: 0; color: var(--text-2); font-size: 15px; }
+    .step-number { display: inline-grid; place-items: center; width: 28px; height: 28px; margin-bottom: 12px; border-radius: 50%; background: var(--accent); color: var(--accent-ink); font-weight: 700; font-size: 14px; }
+    .feature-icon { display: inline-grid; place-items: center; width: 36px; height: 36px; margin-bottom: 12px; border-radius: 10px; background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--accent); font-size: 18px; }
+
+    .path { position: relative; }
+    .path__tag { display: inline-block; margin-bottom: 10px; padding: 2px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; }
+    .path__tag--wifi { background: color-mix(in srgb, var(--phone) 14%, transparent); color: var(--phone); }
+    .path__tag--bt { background: color-mix(in srgb, var(--accent) 14%, transparent); color: var(--accent); }
+    .path ul { margin: 12px 0 0; padding-left: 18px; color: var(--text-2); font-size: 15px; }
+    .path li { margin: 4px 0; }
+
+    .problem { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; align-items: center; }
+    @media (max-width: 760px) { .problem { grid-template-columns: 1fr; } }
+    .quote { margin: 0; padding: 20px 22px; border-left: 4px solid var(--accent); border-radius: 0 12px 12px 0; background: var(--surface-2); color: var(--text); font-size: 17px; }
+
+    ol.steps { margin: 0; padding-left: 22px; }
+    ol.steps li { margin: 8px 0; }
+    details { border: 1px solid var(--line); border-radius: 12px; background: var(--surface); padding: 0 18px; margin-bottom: 10px; }
+    section.alt details { background: var(--bg); }
+    summary { cursor: pointer; padding: 14px 0; font-weight: 600; list-style: none; }
+    summary::-webkit-details-marker { display: none; }
+    summary::after { content: "+"; float: right; color: var(--text-2); font-weight: 400; }
+    details[open] summary::after { content: "–"; }
+    details > *:not(summary) { margin-top: 0; padding-bottom: 14px; color: var(--text-2); }
+
+    .notes { columns: 2; column-gap: 32px; margin: 0; padding: 0; list-style: none; }
+    @media (max-width: 760px) { .notes { columns: 1; } }
+    .notes li { break-inside: avoid; margin: 0 0 14px; padding-left: 18px; position: relative; color: var(--text-2); }
+    .notes li::before { content: ""; position: absolute; left: 0; top: 0.65em; width: 7px; height: 7px; border-radius: 50%; background: var(--busy); }
+    .notes strong { color: var(--text); }
+
+    .download { text-align: center; }
+    .download .cta { justify-content: center; }
+    .download small { display: block; margin-top: 14px; color: var(--text-2); }
+
+    footer { padding: 32px 0 48px; color: var(--text-2); font-size: 14px; }
+    footer .wrap { display: flex; flex-wrap: wrap; gap: 12px 28px; justify-content: space-between; }
+    code { padding: 1px 6px; border-radius: 6px; background: var(--surface-2); font-size: 0.92em; }
+  </style>
+</head>
+<body>
+  <nav class="nav" aria-label="Main">
+    <div class="wrap">
+      <a class="brand" href="#top"><img src="assets/icon.png" alt="" width="28" height="28">BudsLink</a>
+      <div class="nav__links">
+        <a href="#how">How it works</a>
+        <a href="#features">Features</a>
+        <a href="#phone">Connect your phone</a>
+        <a href="#faq">FAQ</a>
+      </div>
+      <a class="button button--small" href="https://github.com/Mrehankamboh/BudsLink">GitHub</a>
+    </div>
+  </nav>
+
+  <header class="hero" id="top">
+    <div class="wrap">
+      <div>
+        <span class="eyebrow">Free for Windows 11 · no app on the phone</span>
+        <h1>Your laptop and your phone. One pair of buds.</h1>
+        <p class="lead">BudsLink plays your phone's sound and your laptop's sound in the same Bluetooth earbuds, at the same time, even if your buds can only connect to one device.</p>
+        <div class="cta">
+          <a class="button button--accent" href="https://github.com/Mrehankamboh/BudsLink/releases/latest">Download for Windows</a>
+          <a class="button" href="#how">See how it works</a>
+        </div>
+        <ul class="facts">
+          <li>Free and open source</li>
+          <li>Wi-Fi or Bluetooth</li>
+          <li>No account, no tracking</li>
+        </ul>
+      </div>
+
+      <figure class="stage" style="margin:0">
+        <span class="stage__count">2 sources in your buds</span>
+        <svg viewBox="0 0 440 210" role="img" aria-label="The phone sends its sound to the laptop over Wi-Fi or Bluetooth; the laptop sends its own sound and the phone's to the buds over Bluetooth.">
+          <!-- links -->
+          <path class="link link--phone" d="M92 105 C 130 70, 160 70, 186 98"/>
+          <path class="link pulse pulse--phone" d="M92 105 C 130 70, 160 70, 186 98"/>
+          <path class="link link--buds" d="M266 98 C 292 70, 322 70, 352 105"/>
+          <path class="link pulse pulse--buds" d="M266 98 C 292 70, 322 70, 352 105"/>
+          <text class="link-label link-label--phone" x="139" y="64">Wi-Fi or Bluetooth</text>
+          <text class="link-label link-label--buds" x="309" y="64">Bluetooth</text>
+
+          <!-- phone -->
+          <rect class="node" x="38" y="62" width="54" height="92" rx="12"/>
+          <rect class="icon-line" x="50" y="74" width="30" height="56" rx="3" style="stroke-width:1.5;opacity:.5"/>
+          <circle cx="65" cy="142" r="3" fill="currentColor" style="fill:var(--text);opacity:.5"/>
+          <text class="node-label" x="65" y="178">Phone</text>
+          <text class="node-sub" x="65" y="194">video, music</text>
+
+          <!-- laptop -->
+          <rect class="node" x="186" y="72" width="80" height="54" rx="6"/>
+          <path class="icon-line" d="M174 136 h104 l-8 10 h-88 z" style="fill:var(--surface-2);stroke:var(--line);stroke-width:1.5"/>
+          <path class="icon-line" d="M210 99 l8 8 l16 -16" style="stroke:var(--phone)"/>
+          <text class="node-label" x="226" y="178">Laptop</text>
+          <text class="node-sub" x="226" y="194">mixes both</text>
+
+          <!-- buds -->
+          <circle class="node" cx="374" cy="108" r="26"/>
+          <circle class="icon-line" cx="365" cy="102" r="6" style="stroke-width:1.8"/><path class="icon-line" d="M364 108 l-2 12" style="stroke-width:1.8"/><circle class="icon-line" cx="383" cy="102" r="6" style="stroke-width:1.8"/><path class="icon-line" d="M384 108 l2 12" style="stroke-width:1.8"/>
+          <text class="node-label" x="374" y="178">Buds</text>
+          <text class="node-sub" x="374" y="194">you hear both</text>
+        </svg>
+        <figcaption class="stage__caption">A video on the laptop and a video on the phone — both in your buds.</figcaption>
+      </figure>
+    </div>
+  </header>
+
+  <section class="alt" id="problem">
+    <div class="wrap problem">
+      <div>
+        <h2>Tired of switching your buds?</h2>
+        <p class="section-lead" style="margin-bottom:0">Most budget earbuds connect to one device at a time. Want to hear the phone? Disconnect from the laptop, connect to the phone, and back again — every single time. No app can change that, because it's part of the earbuds' firmware.</p>
+      </div>
+      <blockquote class="quote">BudsLink takes another way: the buds stay on the laptop, and the phone's sound comes to the laptop. Windows mixes everything into your buds. Nothing switches.</blockquote>
+    </div>
+  </section>
+
+  <section id="how">
+    <div class="wrap">
+      <h2>How it works</h2>
+      <p class="section-lead">Three parts, all run by one small tray app.</p>
+      <div class="grid grid--3">
+        <div class="card">
+          <span class="step-number">1</span>
+          <h3>Buds stay on the laptop</h3>
+          <p>BudsLink connects your buds, reconnects them when they drop, and makes them the laptop's speaker — your old speaker comes back when they go away.</p>
+        </div>
+        <div class="card">
+          <span class="step-number">2</span>
+          <h3>The phone sends its sound</h3>
+          <p>Over Wi-Fi with the phone's built-in <strong>Cast</strong>, or over Bluetooth, where the laptop acts as a speaker for the phone. Nothing to install on the phone.</p>
+        </div>
+        <div class="card">
+          <span class="step-number">3</span>
+          <h3>Windows mixes it all</h3>
+          <p>YouTube, Zoom and every app on the laptop, plus the phone, play together in your buds — each with its own volume slider.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="alt" id="paths">
+    <div class="wrap">
+      <h2>Two ways for your phone</h2>
+      <p class="section-lead">Leave it on <strong>Auto</strong>: Wi-Fi while the phone casts, Bluetooth otherwise. The same phone never plays twice, so there's no echo.</p>
+      <div class="grid grid--2">
+        <div class="card path">
+          <span class="path__tag path__tag--wifi">Wi-Fi · Cast</span>
+          <h3>Tap Cast → BudsLink</h3>
+          <p>BudsLink has a Miracast receiver built in. It shows up in the phone's Cast list like a TV.</p>
+          <ul>
+            <li>Keeps Bluetooth free for the buds</li>
+            <li>Optional window with the phone's screen</li>
+            <li>New phones need your OK once</li>
+            <li>Needs a laptop Wi-Fi card that can receive Miracast</li>
+          </ul>
+        </div>
+        <div class="card path">
+          <span class="path__tag path__tag--bt">Bluetooth · automatic</span>
+          <h3>Nothing to tap</h3>
+          <p>Pair the phone with the laptop once. BudsLink connects to it by itself whenever it isn't casting.</p>
+          <ul>
+            <li>Works with almost any phone, iPhone included</li>
+            <li>Comes back by itself when the phone returns</li>
+            <li>Shares the laptop's radio with the buds</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="features">
+    <div class="wrap">
+      <h2>Everything in one place</h2>
+      <p class="section-lead">Click the tray icon and a small dock opens beside it.</p>
+      <div class="grid grid--4">
+        <div class="card"><span class="feature-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></svg></span><h3>Auto-reconnect</h3><p>Buds, phone and receiver come back by themselves — after a drop, a closed case or sleep.</p></div>
+        <div class="card"><span class="feature-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg></span><h3>Volume per source</h3><p>Buds, laptop, phone over Wi-Fi and phone over Bluetooth each get a slider and mute.</p></div>
+        <div class="card"><span class="feature-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7"/></svg></span><h3>Setup check</h3><p>Bluetooth, pairing, network, firewall and Wi-Fi support checked and fixed with one click.</p></div>
+        <div class="card"><span class="feature-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 16v-5a6 6 0 1 1 12 0v5l2 2H4z"/><path d="M10 20a2 2 0 0 0 4 0"/></svg></span><h3>Clear messages</h3><p>"Phone audio is now in your buds", "Network is Public", "Buds switched to call mode".</p></div>
+        <div class="card"><span class="feature-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></span><h3>Private</h3><p>No account, no telemetry. The receiver only runs on your Private home network.</p></div>
+        <div class="card"><span class="feature-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="18" height="11" rx="2"/><path d="M7 11h.01M11 11h.01M15 11h.01M8 15h8"/></svg></span><h3>Hotkey</h3><p><code>Ctrl+Alt+B</code> connects or releases the buds from any app.</p></div>
+        <div class="card"><span class="feature-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v8"/><path d="M7.5 6.5a7 7 0 1 0 9 0"/></svg></span><h3>Starts with Windows</h3><p>Waits in the tray, receiver ready, buds connected when they're on.</p></div>
+        <div class="card"><span class="feature-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 1 0 16z" fill="currentColor"/></svg></span><h3>Light and dark</h3><p>Follows your Windows theme, with the Windows 11 look.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="alt" id="phone">
+    <div class="wrap">
+      <h2>Get started in four steps</h2>
+      <p class="section-lead">Shown for the Infinix Hot 11 Play (XOS, Android 11). Other Android phones are just below.</p>
+      <div class="grid grid--4">
+        <div class="card"><span class="step-number">1</span><h3>Install</h3><p>Download and run the installer. If Windows warns, click <em>More info → Run anyway</em>.</p></div>
+        <div class="card"><span class="step-number">2</span><h3>Setup check</h3><p>Click the Fix buttons it shows. Mark only your <em>home</em> Wi-Fi as Private.</p></div>
+        <div class="card"><span class="step-number">3</span><h3>Connect the buds</h3><p>Disconnect them from the phone, take them out of the case and click <strong>Buds</strong> in the dock.</p></div>
+        <div class="card"><span class="step-number">4</span><h3>Cast the phone</h3><p>Swipe down twice → <strong>Cast</strong> → <strong>BudsLink</strong>, then click <strong>Allow always</strong> on the laptop.</p></div>
+      </div>
+
+      <div style="margin-top:28px">
+        <details>
+          <summary>Cast shows no devices on the Infinix</summary>
+          <p>In the Cast screen, tap <strong>⋮</strong> (top right) and tick <strong>Enable wireless display</strong>. No Cast tile? Tap the pencil icon in quick settings and drag it in, or open Settings and search for "cast".</p>
+        </details>
+        <details>
+          <summary>Other Android phones</summary>
+          <p>Samsung: Quick settings → Smart View. Xiaomi, Redmi, POCO: Settings → Connection &amp; sharing → Cast. OPPO, realme, OnePlus: Settings → Connected devices → Screencast. Google Pixel has no Miracast: use Bluetooth.</p>
+        </details>
+        <details>
+          <summary>Use Bluetooth instead</summary>
+          <p>Pair the phone once in Windows Settings → Bluetooth &amp; devices → Add device. With Phone connection on Auto, BudsLink connects to it by itself.</p>
+        </details>
+      </div>
+    </div>
+  </section>
+
+  <section id="notes">
+    <div class="wrap">
+      <h2>Honest notes</h2>
+      <p class="section-lead">What BudsLink can't do, so there are no surprises.</p>
+      <ul class="notes">
+        <li><strong>A little delay.</strong> Casting adds about 0.1–0.3 s and Bluetooth to the buds another 0.15–0.25 s. Fine for music and videos on the laptop; a video on the phone's own screen will be slightly out of lip-sync.</li>
+        <li><strong>The phone taps Cast for Wi-Fi.</strong> Android doesn't let other devices pull sound from a phone. For no tapping at all, use Bluetooth.</li>
+        <li><strong>Some Wi-Fi cards can't receive Miracast.</strong> The setup check tells you; then the phone uses Bluetooth.</li>
+        <li><strong>Some apps block casting</strong>, such as Netflix.</li>
+        <li><strong>Not on public Wi-Fi.</strong> The receiver stays off on cafe and airport networks, on purpose.</li>
+        <li><strong>Calls lower quality.</strong> When an app uses the buds' microphone, Bluetooth drops to call quality. BudsLink tells you when that happens.</li>
+        <li><strong>Not code-signed yet.</strong> Windows shows a warning the first time; Smart App Control blocks unsigned apps.</li>
+        <li><strong>No multipoint magic.</strong> The buds still hold one connection, to the laptop. Away from the laptop, connect them to the phone as usual.</li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="alt" id="faq">
+    <div class="wrap">
+      <h2>Questions</h2>
+      <details>
+        <summary>Do I need to install anything on my phone?</summary>
+        <p>No. Wi-Fi uses the phone's built-in Cast; Bluetooth only needs the phone paired with the laptop once.</p>
+      </details>
+      <details>
+        <summary>Is it really free?</summary>
+        <p>Yes. BudsLink is free and open source under the MIT license. No account, no ads, no paid version.</p>
+      </details>
+      <details>
+        <summary>Does it send anything over the internet?</summary>
+        <p>No. Everything happens on your laptop and your home network. There is no telemetry.</p>
+      </details>
+      <details>
+        <summary>Does my phone's speaker go quiet while casting?</summary>
+        <p>Usually yes: Android sends media sound to the cast. Ringtones and notifications may still play on the phone.</p>
+      </details>
+      <details>
+        <summary>Can I use it with an iPhone?</summary>
+        <p>Yes, over Bluetooth. iPhones don't support Miracast; an AirPlay receiver may come later.</p>
+      </details>
+      <details>
+        <summary>My buds support multipoint. Do I need this?</summary>
+        <p>Probably not — multipoint buds already stay connected to both devices. BudsLink is for the many that don't.</p>
+      </details>
+    </div>
+  </section>
+
+  <section class="download" id="download">
+    <div class="wrap">
+      <h2>Hear both. Switch never.</h2>
+      <p class="section-lead" style="margin-inline:auto">One small app for Windows 11. Your phone stays as it is.</p>
+      <div class="cta">
+        <a class="button button--accent" href="https://github.com/Mrehankamboh/BudsLink/releases/latest">Download for Windows</a>
+        <a class="button" href="https://github.com/Mrehankamboh/BudsLink">Source code</a>
+      </div>
+      <small>Windows 11 · per-user installer, no admin rights needed · about 2 MB</small>
+    </div>
+  </section>
+
+  <footer>
+    <div class="wrap">
+      <span>BudsLink · MIT license</span>
+      <span>Based on <a href="https://github.com/shakaibarsalan/BudsBridge">BudsBridge</a> by Muhammad Shakaib Arsalan.</span>
+    </div>
+  </footer>
+</body>
+</html>
