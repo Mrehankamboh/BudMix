@@ -15,7 +15,7 @@ export interface DeviceView {
   lastConnected: boolean;
 }
 
-export type BridgeState = "off" | "connecting" | "streaming" | "waiting";
+export type BridgeState = "off" | "connecting" | "streaming" | "waiting" | "paused";
 
 /** A paired phone whose audio can play through the laptop (bridge mode). */
 export interface SourceView {
@@ -56,6 +56,51 @@ export interface Settings {
   savedOutput: string | null;
   /** The first-run setup check was finished or skipped once. */
   setupDone: boolean;
+  /** Where phone audio comes from. */
+  phoneMode: PhoneMode;
+  /** Phones allowed to cast without asking; owned by the app. */
+  allowedPhones: string[];
+  volumes: Volumes;
+  /** Show the phone's screen in a small window while it casts. */
+  showCastVideo: boolean;
+  phonesSeeded: boolean;
+}
+
+/** Auto: Wi-Fi while the phone casts, Bluetooth otherwise. */
+export type PhoneMode = "auto" | "wifiOnly" | "bluetoothOnly";
+
+export interface Level {
+  /** 0 to 100. */
+  percent: number;
+  muted: boolean;
+}
+
+export type VolumeSource = "master" | "laptop" | "phoneWifi" | "phoneBluetooth";
+
+export interface Volumes {
+  master: Level;
+  laptop: Level;
+  phoneWifi: Level;
+  phoneBluetooth: Level;
+}
+
+export type ReceiverState = "off" | "notPrivate" | "starting" | "ready" | "unsupported" | "failed";
+
+export type CastPhase = "idle" | "needsApproval" | "connecting" | "playing";
+
+/** Phone audio over Wi-Fi (Miracast cast) and the Bluetooth rule. */
+export interface CastStatus {
+  receiver: ReceiverState;
+  message: string | null;
+  phone: string | null;
+  phase: CastPhase;
+  pin: string | null;
+  allowed: string[];
+  mode: PhoneMode;
+  /** The Bluetooth phone link is held off (the phone casts, or Wi-Fi only). */
+  bluetoothSuspended: boolean;
+  videoVisible: boolean;
+  lastError: string | null;
 }
 
 export type CheckId =

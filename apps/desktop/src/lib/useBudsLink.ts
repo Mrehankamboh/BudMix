@@ -2,15 +2,46 @@ import { useCallback, useEffect, useState } from "react";
 
 import { api } from "./api";
 import { isEngaged } from "./format";
+import type { UnlistenFn } from "@tauri-apps/api/event";
+
 import type {
   AppInfo,
   AudioView,
+  CastStatus,
   DeviceView,
+  Level,
   Settings,
   SourceView,
   UnavailablePhone,
+  VolumeSource,
 } from "./types";
 import { useLiveList } from "./useLiveList";
+
+/**
+ * One value kept in sync with a Rust runtime. Subscribes first, so no change
+ * is missed between the load and the listener. `load` and `subscribe` must
+ * be stable.
+ */
+function useLiveValue<T>(
+  load: () => Promise<T | null>,
+  subscribe: (handler: (value: T) => void) => Promise<UnlistenFn>,
+): T | null {
+  const [value, setValue] = useState<T | null>(null);
+  useEffect(() => {
+    let live = false;
+    const unlisten = subscribe((next) => {
+      live = true;
+      setValue(next);
+    });
+    load()
+      .then((initial) => {
+        if (!live) setValue(initial);
+      })
+      .catch((err: unknown) => console.warn("loading state failed", err));
+    return () => void unlisten.then((stop) => stop());
+  }, [load, subscribe]);
+  return value;
+}
 
 /** Everything both windows show, kept in sync with the Rust runtimes, plus the actions on it. */
 export function useBudsLink() {
@@ -20,29 +51,14 @@ export function useBudsLink() {
   const [settings, setSettings] = useState<Settings | null>(null);
   const [info, setInfo] = useState<AppInfo | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
-  const [audio, setAudio] = useState<AudioView | null>(null);
+  const audio = useLiveValue<AudioView>(api.audioState, api.onAudioChanged);
+  const cast = useLiveValue<CastStatus>(api.castState, api.onCastChanged);
   const [tone, setTone] = useState<"idle" | "playing">("idle");
 
   useEffect(() => {
     api.appInfo().then(setInfo).catch((err: unknown) => setActionError(String(err)));
     api.getSettings().then(setSettings).catch((err: unknown) => setActionError(String(err)));
     const unlisten = api.onSettingsChanged(setSettings);
-    return () => void unlisten.then((stop) => stop());
-  }, []);
-
-  useEffect(() => {
-    // Subscribe first so no change is missed between the load and the listener.
-    let live = false;
-    const unlisten = api.onAudioChanged((next) => {
-      live = true;
-      setAudio(next);
-    });
-    api
-      .audioState()
-      .then((initial) => {
-        if (!live) setAudio(initial);
-      })
-      .catch((err: unknown) => console.warn("reading laptop audio failed", err));
     return () => void unlisten.then((stop) => stop());
   }, []);
 
@@ -114,6 +130,23 @@ export function useBudsLink() {
     }
   }, [report]);
 
+  const run = useCallback(
+    (request: Promise<void>) => {
+      setActionError(null);
+      request.catch(report);
+    },
+    [report],
+  );
+
+  const approvePhone = useCallback((remember: boolean) => run(api.approvePhone(remember)), [run]);
+  const rejectPhone = useCallback(() => run(api.rejectPhone()), [run]);
+  const forgetPhone = useCallback((name: string) => run(api.forgetPhone(name)), [run]);
+  const setVolume = useCallback(
+    (source: VolumeSource, level: Level) => run(api.setVolume(source, level)),
+    [run],
+  );
+  const showCastVideo = useCallback((visible: boolean) => run(api.showCastVideo(visible)), [run]);
+
   const makeHotkeyTarget = useCallback(
     (id: string) => {
       if (settings) void saveSettings({ ...settings, preferredDevice: id });
@@ -128,6 +161,7 @@ export function useBudsLink() {
     settings,
     info,
     audio,
+    cast,
     tone,
     error: actionError ?? loadError,
     saveSettings,
@@ -135,5 +169,10 @@ export function useBudsLink() {
     togglePhone,
     makeHotkeyTarget,
     playTestTone,
+    approvePhone,
+    rejectPhone,
+    forgetPhone,
+    setVolume,
+    showCastVideo,
   };
 }

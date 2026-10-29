@@ -6,8 +6,8 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 
 use budslink_core::{
-    AudioHandle, AudioRuntime, BridgeHandle, BridgeRuntime, Runtime, RuntimeHandle, Settings,
-    SourceBackend,
+    AudioHandle, AudioRuntime, BridgeHandle, BridgeRuntime, CastHandle, CastRuntime, Runtime,
+    RuntimeHandle, Settings, SourceBackend,
 };
 use serde::Serialize;
 
@@ -25,6 +25,7 @@ pub struct AppState {
     runtime: Runtime,
     bridge: BridgeRuntime,
     audio: AudioRuntime,
+    cast: CastRuntime,
     /// Also driven by `bridge`; kept for the phone list and diagnostics.
     sources: Arc<dyn SourceBackend>,
     settings: Mutex<Settings>,
@@ -39,10 +40,13 @@ fn lock<T>(mutex: &Mutex<T>) -> MutexGuard<'_, T> {
 }
 
 impl AppState {
+    // One argument per runtime plus settings; a wrapper struct would add nothing.
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         runtime: Runtime,
         bridge: BridgeRuntime,
         audio: AudioRuntime,
+        cast: CastRuntime,
         sources: Arc<dyn SourceBackend>,
         settings: Settings,
         settings_path: PathBuf,
@@ -52,6 +56,7 @@ impl AppState {
             runtime,
             bridge,
             audio,
+            cast,
             sources,
             settings: Mutex::new(settings),
             settings_path,
@@ -73,6 +78,10 @@ impl AppState {
         self.audio.handle()
     }
 
+    pub fn cast(&self) -> CastHandle {
+        self.cast.handle()
+    }
+
     pub fn sources(&self) -> Arc<dyn SourceBackend> {
         Arc::clone(&self.sources)
     }
@@ -89,12 +98,33 @@ impl AppState {
         self.runtime
             .handle()
             .configure(settings.controller_config());
-        let routing_changed = lock(&self.settings).route_laptop_audio != settings.route_laptop_audio;
-        if routing_changed {
+        let previous = lock(&self.settings).clone();
+        if previous.route_laptop_audio != settings.route_laptop_audio {
             self.audio.handle().set_routing(settings.route_laptop_audio);
+        }
+        if previous.volumes != settings.volumes {
+            self.audio.handle().set_volumes(settings.volumes);
+            self.cast.handle().set_volume(settings.volumes.phone_wifi);
+        }
+        if previous.phone_mode != settings.phone_mode {
+            self.cast.handle().set_mode(settings.phone_mode);
+        }
+        if previous.show_cast_video != settings.show_cast_video {
+            self.cast.handle().show_video(settings.show_cast_video);
         }
         *lock(&self.settings) = settings;
         Ok(())
+    }
+
+    /// Changes settings the runtimes own (allowlist, first-run seeding) and
+    /// saves them, without re-applying anything.
+    pub fn update_owned(&self, change: impl FnOnce(&mut Settings)) -> Settings {
+        let mut settings = lock(&self.settings);
+        change(&mut settings);
+        if let Err(err) = settings.save(&self.settings_path) {
+            log::warn!("could not save settings: {err}");
+        }
+        settings.clone()
     }
 
     /// Remembers the output to restore later, so it survives a restart.
@@ -126,9 +156,11 @@ impl AppState {
         self.quitting.load(Ordering::SeqCst)
     }
 
-    /// Marks the app as quitting and gives the previous default output back.
+    /// Marks the app as quitting, stops the receiver and gives the previous
+    /// default output (and other apps' volumes) back.
     pub fn prepare_quit(&self) {
         self.quitting.store(true, Ordering::SeqCst);
+        self.cast.handle().stop();
         self.audio.handle().stop();
     }
 }

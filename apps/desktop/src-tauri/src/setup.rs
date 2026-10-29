@@ -12,8 +12,18 @@ use crate::state::AppState;
 /// Every check, system ones first, then pairing.
 pub fn run_checks(app: &AppHandle) -> Vec<CheckResult> {
     let state = app.state::<AppState>();
-    let buds: Vec<String> = state.runtime().views().into_iter().map(|device| device.name).collect();
-    let phones: Vec<String> = state.bridge().views().into_iter().map(|phone| phone.name).collect();
+    let buds: Vec<String> = state
+        .runtime()
+        .views()
+        .into_iter()
+        .map(|device| device.name)
+        .collect();
+    let phones: Vec<String> = state
+        .bridge()
+        .views()
+        .into_iter()
+        .map(|phone| phone.name)
+        .collect();
     let unavailable: Vec<String> = state
         .sources()
         .unavailable()
@@ -90,16 +100,15 @@ fn apply(fix: Fix) -> Result<(), String> {
     use budslink_win::checks::FixTask;
     use budslink_win::setup;
 
-    let program = std::env::current_exe().map_err(|err| format!("Couldn't find BudsLink.exe: {err}"))?;
+    let program =
+        std::env::current_exe().map_err(|err| format!("Couldn't find BudsLink.exe: {err}"))?;
     match fix {
         Fix::OpenSettings { uri } => setup::open_settings(&uri),
         Fix::MakeNetworkPrivate { network } => {
             setup::run_fixes(&[FixTask::Network], &network, &program)
         }
         Fix::AddFirewallRule => setup::run_fixes(&[FixTask::Firewall], "", &program),
-        Fix::InstallWirelessDisplay => {
-            setup::run_fixes(&[FixTask::WirelessDisplay], "", &program)
-        }
+        Fix::InstallWirelessDisplay => setup::run_fixes(&[FixTask::WirelessDisplay], "", &program),
     }
 }
 

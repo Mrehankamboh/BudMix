@@ -20,10 +20,19 @@ fn main() {
     use budslink_miracast::{Receiver, ReceiverEvent, ReceiverOptions};
 
     static STARTED: OnceLock<Instant> = OnceLock::new();
-    let stamp = || format!("[{:>6.1}s]", STARTED.get_or_init(Instant::now).elapsed().as_secs_f32());
+    let stamp = || {
+        format!(
+            "[{:>6.1}s]",
+            STARTED.get_or_init(Instant::now).elapsed().as_secs_f32()
+        )
+    };
     stamp();
 
-    let mut options = ReceiverOptions::default();
+    // The probe has no approval step: every phone plays at once.
+    let mut options = ReceiverOptions {
+        auto_play: true,
+        ..ReceiverOptions::default()
+    };
     let mut args = std::env::args().skip(1);
     while let Some(arg) = args.next() {
         match arg.as_str() {
@@ -36,11 +45,18 @@ fn main() {
         }
     }
 
-    println!("{} Starting the Miracast receiver \"{}\"...", stamp(), options.friendly_name);
+    println!(
+        "{} Starting the Miracast receiver \"{}\"...",
+        stamp(),
+        options.friendly_name
+    );
     let receiver = match Receiver::start(&options, move |event| {
         let line = match event {
             ReceiverEvent::Status(listening) => format!("receiver status: {listening:?}"),
-            ReceiverEvent::PhoneConnected { name, pin: Some(pin) } => {
+            ReceiverEvent::PhoneConnected {
+                name,
+                pin: Some(pin),
+            } => {
                 format!("phone connecting: {name}. Type this PIN on the phone: {pin}")
             }
             ReceiverEvent::PhoneConnected { name, pin: None } => {

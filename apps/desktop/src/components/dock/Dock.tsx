@@ -20,8 +20,11 @@ import {
   statusLabel,
   unavailableLabel,
 } from "../../lib/format";
-import type { AudioView, DeviceView, SourceView } from "../../lib/types";
+import { sourceRows } from "../../lib/sources";
+import type { AudioView, CastStatus, DeviceView, SourceView } from "../../lib/types";
 import { useBudsLink } from "../../lib/useBudsLink";
+import { SourcesPanel } from "../SourcesPanel";
+import { CastBanner } from "./CastBanner";
 import { ExpandRow } from "./ExpandRow";
 import { FlowHero } from "./FlowHero";
 import { MoreMenu } from "./MoreMenu";
@@ -39,7 +42,23 @@ const PHONE_TILE: Record<SourceView["state"], string> = {
   connecting: "Connecting…",
   waiting: "Waiting…",
   streaming: "Playing",
+  paused: "Paused",
 };
+
+type Section = "devices" | "phones" | "sources";
+
+/** Bluetooth phones plus the casting phone, drawn and counted as one list. */
+function withCastPhone(phones: SourceView[], cast: CastStatus | null): SourceView[] {
+  if (!cast || cast.phase === "idle" || cast.phase === "needsApproval") return phones;
+  const casting: SourceView = {
+    id: "cast",
+    name: `${cast.phone ?? "Phone"} (Wi-Fi)`,
+    enabled: true,
+    state: cast.phase === "playing" ? "streaming" : "connecting",
+    lastError: null,
+  };
+  return [casting, ...phones.filter((phone) => phone.state !== "paused")];
+}
 
 /** Where laptop audio plays right now, in one short line. */
 function laptopAudioLabel(audio: AudioView | null): string {
@@ -82,15 +101,24 @@ export function Dock() {
     toggleDevice,
     togglePhone,
     audio,
+    cast,
     tone,
     playTestTone,
+    approvePhone,
+    rejectPhone,
+    forgetPhone,
+    setVolume,
+    showCastVideo,
   } = useBudsLink();
-  const [open, setOpen] = useState<"devices" | "phones" | null>(null);
+  const [open, setOpen] = useState<Section | null>(null);
   const root = useRef<HTMLDivElement>(null);
   useFitWindow(root);
 
   const deviceList = devices ?? [];
-  const phoneList = phones ?? [];
+  const bluetoothPhones = phones ?? [];
+  // The casting phone joins the picture and the counts like any other phone;
+  // the same phone held off on Bluetooth is left out.
+  const phoneList = withCastPhone(bluetoothPhones, cast);
   const device = focusDevice(deviceList, settings?.preferredDevice ?? null);
   const phone = focusPhone(phoneList);
   // Shown on the tile when Windows offers no phone but one is paired.
@@ -98,7 +126,9 @@ export function Dock() {
   const sources = soundSources(device, phoneList);
   const { title, detail } = headline(device, phoneList);
   const playing = phoneList.filter((item) => item.state === "streaming");
-  const problem = error ?? device?.lastError ?? phone?.lastError ?? audio?.lastError ?? null;
+  const problem =
+    error ?? device?.lastError ?? phone?.lastError ?? audio?.lastError ?? cast?.lastError ?? null;
+  const rows = sourceRows(device, audio, cast, bluetoothPhones);
   const demo = info?.backend === "demo";
 
   const subtitle = [
@@ -109,7 +139,7 @@ export function Dock() {
     .filter(Boolean)
     .join(" · ");
 
-  const toggleSection = (section: "devices" | "phones") =>
+  const toggleSection = (section: Section) =>
     setOpen((current) => (current === section ? null : section));
 
   return (
@@ -151,6 +181,8 @@ export function Dock() {
           and low quality. End the call or choose another microphone to get stereo back.
         </p>
       )}
+
+      <CastBanner cast={cast} onApprove={approvePhone} onReject={rejectPhone} onShowVideo={showCastVideo} />
 
       <section className="dock-card" aria-label="Status">
         <div className="dock-card__head">
@@ -219,7 +251,9 @@ export function Dock() {
                   : "No phone paired"
             }
             onClick={
-              phone
+              phone?.id === "cast"
+                ? () => setOpen("sources")
+                : phone
                 ? () => togglePhone(phone, !phone.enabled)
                 : unavailable
                   ? () => setOpen("phones")
@@ -261,6 +295,25 @@ export function Dock() {
             {tone === "playing" ? "Playing…" : "Test beep"}
           </button>
         </div>
+
+        <ExpandRow
+          title="Sources"
+          value={`${rows.filter((row) => row.source !== "master" && row.status === "playing").length} playing`}
+          open={open === "sources"}
+          onToggle={() => toggleSection("sources")}
+        >
+          {settings && (
+            <SourcesPanel
+              compact
+              rows={rows}
+              volumes={settings.volumes}
+              onVolume={setVolume}
+              onDisconnectCast={rejectPhone}
+              allowed={settings.allowedPhones}
+              onForget={forgetPhone}
+            />
+          )}
+        </ExpandRow>
 
         <ExpandRow
           title="Devices"

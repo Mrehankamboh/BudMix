@@ -14,9 +14,10 @@ use windows::Media::Core::MediaSource;
 use windows::Media::Miracast::{
     MiracastReceiver, MiracastReceiverApplySettingsStatus, MiracastReceiverAuthorizationMethod,
     MiracastReceiverConnection, MiracastReceiverConnectionCreatedEventArgs,
-    MiracastReceiverDisconnectedEventArgs, MiracastReceiverListeningStatus,
-    MiracastReceiverMediaSourceCreatedEventArgs, MiracastReceiverSession,
-    MiracastReceiverSessionStartStatus, MiracastReceiverSettings, MiracastReceiverWiFiStatus,
+    MiracastReceiverDisconnectReason, MiracastReceiverDisconnectedEventArgs,
+    MiracastReceiverListeningStatus, MiracastReceiverMediaSourceCreatedEventArgs,
+    MiracastReceiverSession, MiracastReceiverSessionStartStatus, MiracastReceiverSettings,
+    MiracastReceiverWiFiStatus,
 };
 use windows::Media::Playback::{MediaPlayer, MediaPlayerAudioCategory, MediaPlayerFailedEventArgs};
 use windows::Win32::Foundation::{E_ACCESSDENIED, RPC_E_CHANGED_MODE};
@@ -32,6 +33,9 @@ pub struct ReceiverOptions {
     pub friendly_name: String,
     /// Ask phones for a PIN shown on the laptop on every connection.
     pub require_pin: bool,
+    /// Play every phone at once, without waiting for [`Receiver::play`]
+    /// (used by the `cast-probe` tool).
+    pub auto_play: bool,
 }
 
 impl Default for ReceiverOptions {
@@ -39,6 +43,7 @@ impl Default for ReceiverOptions {
         Self {
             friendly_name: "BudsLink".to_owned(),
             require_pin: false,
+            auto_play: false,
         }
     }
 }
@@ -76,7 +81,46 @@ impl fmt::Display for StartFailure {
 impl std::error::Error for StartFailure {}
 
 type Listener = Arc<dyn Fn(ReceiverEvent) + Send + Sync>;
-type Players = Arc<Mutex<Vec<MediaPlayer>>>;
+
+/// The current cast: its connections and players, and whether it may play.
+struct Cast {
+    connections: Vec<MiracastReceiverConnection>,
+    players: Vec<MediaPlayer>,
+    /// Players start paused until the app allows the phone (allowlist or
+    /// the user's click), see [`Receiver::play`].
+    approved: bool,
+    auto_play: bool,
+    volume: f64,
+    muted: bool,
+}
+
+impl Default for Cast {
+    fn default() -> Self {
+        Self {
+            connections: Vec::new(),
+            players: Vec::new(),
+            approved: false,
+            auto_play: false,
+            volume: 1.0,
+            muted: false,
+        }
+    }
+}
+
+impl Cast {
+    /// Ends the cast's playback; the next phone starts unapproved again.
+    fn stop(&mut self) {
+        for player in self.players.drain(..) {
+            if let Err(err) = player.Close() {
+                log::warn!("closing a cast player failed: {err}");
+            }
+        }
+        self.connections.clear();
+        self.approved = self.auto_play;
+    }
+}
+
+type Players = Arc<Mutex<Cast>>;
 
 fn lock<T>(mutex: &Mutex<T>) -> MutexGuard<'_, T> {
     mutex.lock().unwrap_or_else(PoisonError::into_inner)
@@ -103,8 +147,8 @@ impl Receiver {
         let listener: Listener = Arc::new(listener);
         let mut result = ProbeResult::default();
 
-        let receiver =
-            MiracastReceiver::new().map_err(move |err| failure(result, "create the receiver", err))?;
+        let receiver = MiracastReceiver::new()
+            .map_err(move |err| failure(result, "create the receiver", err))?;
         result.wifi = receiver
             .GetStatus()
             .and_then(|status| status.WiFiStatus())
@@ -147,7 +191,11 @@ impl Receiver {
         }
 
         // Events must be subscribed before the session starts.
-        let players: Players = Arc::default();
+        let players: Players = Arc::new(Mutex::new(Cast {
+            approved: options.auto_play,
+            auto_play: options.auto_play,
+            ..Cast::default()
+        }));
         if let Err(err) = subscribe(&session, &listener, &players) {
             let _ = session.Close();
             return Err(failure(result, "subscribe to receiver events", err));
@@ -160,9 +208,10 @@ impl Receiver {
                 return Err(failure(result, "start the receiver session", err));
             }
         };
-        result.start = Some(start_outcome(
-            started.Status().unwrap_or(MiracastReceiverSessionStartStatus::UnknownFailure),
-        ));
+        result.start =
+            Some(start_outcome(started.Status().unwrap_or(
+                MiracastReceiverSessionStartStatus::UnknownFailure,
+            )));
         if result.start != Some(Outcome::Success) {
             let _ = session.Close();
             return Err(StartFailure {
@@ -210,6 +259,47 @@ impl Receiver {
     pub fn listening(&self) -> Option<Listening> {
         current_listening(&self.receiver)
     }
+
+    /// Lets the current phone play (it is allowed). Players created later in
+    /// the same cast play at once.
+    pub fn play(&self) {
+        let mut cast = lock(&self.players);
+        cast.approved = true;
+        for player in &cast.players {
+            if let Err(err) = player.Play() {
+                log::warn!("starting cast playback failed: {err}");
+            }
+        }
+    }
+
+    /// Disconnects the current phone (the user said no).
+    pub fn reject(&self) {
+        let mut cast = lock(&self.players);
+        for connection in &cast.connections {
+            if let Err(err) =
+                connection.Disconnect(MiracastReceiverDisconnectReason::ConnectionNotAccepted)
+            {
+                log::warn!("disconnecting the phone failed: {err}");
+            }
+        }
+        cast.stop();
+    }
+
+    /// The cast's own volume (the "Phone over Wi-Fi" slider), 0.0 to 1.0.
+    pub fn set_volume(&self, volume: f64, muted: bool) {
+        let mut cast = lock(&self.players);
+        cast.volume = volume.clamp(0.0, 1.0);
+        cast.muted = muted;
+        for player in &cast.players {
+            let _ = player.SetVolume(cast.volume);
+            let _ = player.SetIsMuted(muted);
+        }
+    }
+
+    /// The player of the current cast, for the video window.
+    pub fn player(&self) -> Option<MediaPlayer> {
+        lock(&self.players).players.last().cloned()
+    }
 }
 
 impl Drop for Receiver {
@@ -217,7 +307,7 @@ impl Drop for Receiver {
         if let Some(token) = self.status_token {
             let _ = self.receiver.RemoveStatusChanged(token);
         }
-        stop_players(&self.players);
+        lock(&self.players).stop();
         if let Err(err) = self.session.Close() {
             log::warn!("closing the receiver session failed: {err}");
         }
@@ -244,12 +334,15 @@ fn subscribe(
     players: &Players,
 ) -> windows::core::Result<()> {
     let on_connect = Arc::clone(listener);
+    let connect_cast = Arc::clone(players);
     session.ConnectionCreated(&TypedEventHandler::<
         MiracastReceiverSession,
         MiracastReceiverConnectionCreatedEventArgs,
     >::new(move |_, args| {
         let args = args.ok()?;
-        let name = transmitter_name(&args.Connection()?);
+        let connection = args.Connection()?;
+        let name = transmitter_name(&connection);
+        lock(&connect_cast).connections.push(connection);
         let pin = args
             .Pin()
             .ok()
@@ -267,9 +360,16 @@ fn subscribe(
     >::new(move |_, args| {
         let args = args.ok()?;
         let name = transmitter_name(&args.Connection()?);
-        match play(&args.MediaSource()?, &on_media) {
+        match create_player(&args.MediaSource()?, &on_media) {
             Ok(player) => {
-                lock(&media_players).push(player);
+                let mut cast = lock(&media_players);
+                let _ = player.SetVolume(cast.volume);
+                let _ = player.SetIsMuted(cast.muted);
+                if cast.approved {
+                    player.Play()?;
+                }
+                cast.players.push(player);
+                drop(cast);
                 on_media(ReceiverEvent::StreamStarted { name });
             }
             Err(err) => on_media(ReceiverEvent::PlaybackFailed {
@@ -290,22 +390,23 @@ fn subscribe(
             .and_then(|args| args.Connection())
             .map(|connection| transmitter_name(&connection))
             .unwrap_or_default();
-        stop_players(&disconnect_players);
+        lock(&disconnect_players).stop();
         on_disconnect(ReceiverEvent::PhoneDisconnected { name });
         Ok(())
     }))?;
     Ok(())
 }
 
-fn play(source: &MediaSource, listener: &Listener) -> windows::core::Result<MediaPlayer> {
+/// A paused player for the cast; [`Receiver::play`] starts it.
+fn create_player(source: &MediaSource, listener: &Listener) -> windows::core::Result<MediaPlayer> {
     let player = MediaPlayer::new()?;
     // Media, never Communications: a communications stream makes Windows
     // switch Bluetooth buds to the low-quality hands-free profile.
     player.SetAudioCategory(MediaPlayerAudioCategory::Media)?;
     player.SetRealTimePlayback(true)?;
     let on_failed = Arc::clone(listener);
-    player.MediaFailed(&TypedEventHandler::<MediaPlayer, MediaPlayerFailedEventArgs>::new(
-        move |_, args| {
+    player.MediaFailed(
+        &TypedEventHandler::<MediaPlayer, MediaPlayerFailedEventArgs>::new(move |_, args| {
             let message = args
                 .ok()
                 .and_then(|args| args.ErrorMessage())
@@ -313,19 +414,10 @@ fn play(source: &MediaSource, listener: &Listener) -> windows::core::Result<Medi
                 .unwrap_or_default();
             on_failed(ReceiverEvent::PlaybackFailed { message });
             Ok(())
-        },
-    ))?;
+        }),
+    )?;
     player.SetSource(source)?;
-    player.Play()?;
     Ok(player)
-}
-
-fn stop_players(players: &Players) {
-    for player in lock(players).drain(..) {
-        if let Err(err) = player.Close() {
-            log::warn!("closing a cast player failed: {err}");
-        }
-    }
 }
 
 fn transmitter_name(connection: &MiracastReceiverConnection) -> String {

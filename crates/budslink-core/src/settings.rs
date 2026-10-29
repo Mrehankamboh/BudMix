@@ -10,7 +10,9 @@ use thiserror::Error;
 
 use crate::controller::ControllerConfig;
 use crate::device::DeviceId;
+use crate::phone_router::PhoneMode;
 use crate::reconnect::ReconnectPolicy;
+use crate::volume::Volumes;
 
 #[derive(Debug, Error)]
 pub enum SettingsError {
@@ -42,6 +44,16 @@ pub struct Settings {
     pub saved_output: Option<String>,
     /// The first-run setup check was finished (or skipped) once.
     pub setup_done: bool,
+    /// Where phone audio comes from: Auto (Wi-Fi while casting, otherwise
+    /// Bluetooth), Wi-Fi only or Bluetooth only.
+    pub phone_mode: PhoneMode,
+    /// Phones allowed to cast without asking (their cast names).
+    pub allowed_phones: Vec<String>,
+    pub volumes: Volumes,
+    /// Show the phone's screen in a small window while it casts.
+    pub show_cast_video: bool,
+    /// Paired phones were turned on for Bluetooth audio once, automatically.
+    pub phones_seeded: bool,
 }
 
 impl Default for Settings {
@@ -58,6 +70,11 @@ impl Default for Settings {
             route_laptop_audio: true,
             saved_output: None,
             setup_done: false,
+            phone_mode: PhoneMode::Auto,
+            allowed_phones: Vec::new(),
+            volumes: Volumes::default(),
+            show_cast_video: true,
+            phones_seeded: false,
         }
     }
 }
@@ -106,6 +123,16 @@ impl Settings {
         self.bridged_phones.sort();
         self.bridged_phones.dedup();
         self.saved_output = self.saved_output.filter(|id| !id.trim().is_empty());
+        self.allowed_phones = self
+            .allowed_phones
+            .into_iter()
+            .map(|name| name.trim().to_owned())
+            .filter(|name| !name.is_empty())
+            .collect();
+        self.allowed_phones.sort_by_key(|name| name.to_lowercase());
+        self.allowed_phones
+            .dedup_by(|a, b| a.eq_ignore_ascii_case(b));
+        self.volumes = self.volumes.sanitized();
         self
     }
 

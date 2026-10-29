@@ -19,6 +19,7 @@ const FALLBACK_POLL: Duration = Duration::from_secs(5);
 
 enum Request {
     SetEnabled(DeviceId, bool),
+    SetSuspended(bool),
     Refresh,
     Shutdown,
 }
@@ -35,6 +36,12 @@ pub struct BridgeHandle {
 impl BridgeHandle {
     pub fn set_enabled(&self, id: DeviceId, enabled: bool) {
         self.post(Request::SetEnabled(id, enabled));
+    }
+
+    /// Holds every phone stream off, or lets them come back (see
+    /// [`crate::bridge::BridgeState::Paused`]).
+    pub fn set_suspended(&self, suspended: bool) {
+        self.post(Request::SetSuspended(suspended));
     }
 
     pub fn refresh(&self) {
@@ -140,6 +147,11 @@ impl Worker {
             match rx.recv_timeout(timeout) {
                 Ok(Request::Shutdown) | Err(RecvTimeoutError::Disconnected) => break,
                 Ok(Request::Refresh) => self.refresh(),
+                Ok(Request::SetSuspended(suspended)) => {
+                    let actions = self.controller.set_suspended(suspended, Instant::now());
+                    self.execute(actions);
+                    self.refresh();
+                }
                 Ok(Request::SetEnabled(id, enabled)) => {
                     // Close first, so "Off" is only shown once the stream is gone.
                     // Opening happens in `step`, which shows "Connecting…" first.
@@ -158,7 +170,9 @@ impl Worker {
 
         // Leave nothing streaming behind.
         for view in self.controller.views() {
-            if view.state != crate::bridge::BridgeState::Off {
+            if view.state != crate::bridge::BridgeState::Off
+                && view.state != crate::bridge::BridgeState::Paused
+            {
                 let _ = self.backend.close(&view.id);
             }
         }

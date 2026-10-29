@@ -105,9 +105,7 @@ impl Verdict {
     /// Plain-English explanation with the next step, for the UI and the CLI.
     pub fn explain(self) -> &'static str {
         match self {
-            Verdict::Ready => {
-                "BudsLink is ready. On the phone, open Cast and tap \"BudsLink\"."
-            }
+            Verdict::Ready => "BudsLink is ready. On the phone, open Cast and tap \"BudsLink\".",
             Verdict::WifiCardCannotReceive => {
                 "This laptop's Wi-Fi card cannot receive Miracast. The phone can still \
                  reach your buds over Bluetooth."
@@ -134,7 +132,9 @@ impl Verdict {
 impl fmt::Display for ProbeResult {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fn show<T: fmt::Debug>(value: &Option<T>) -> String {
-            value.as_ref().map_or_else(|| "-".to_owned(), |v| format!("{v:?}"))
+            value
+                .as_ref()
+                .map_or_else(|| "-".to_owned(), |v| format!("{v:?}"))
         }
         write!(
             f,
@@ -164,7 +164,10 @@ mod tests {
     fn listening_after_start_is_ready() {
         assert_eq!(verdict(&started(Listening::Listening)), Verdict::Ready);
         assert_eq!(verdict(&started(Listening::Connected)), Verdict::Ready);
-        assert_eq!(verdict(&started(Listening::ConnectionPending)), Verdict::Ready);
+        assert_eq!(
+            verdict(&started(Listening::ConnectionPending)),
+            Verdict::Ready
+        );
     }
 
     #[test]
@@ -213,7 +216,10 @@ mod tests {
 
     #[test]
     fn policy_and_pause_states() {
-        assert_eq!(verdict(&started(Listening::DisabledByPolicy)), Verdict::DisabledByPolicy);
+        assert_eq!(
+            verdict(&started(Listening::DisabledByPolicy)),
+            Verdict::DisabledByPolicy
+        );
         assert_eq!(
             verdict(&started(Listening::TemporarilyDisabled)),
             Verdict::TemporarilyDisabled

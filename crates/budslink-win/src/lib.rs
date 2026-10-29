@@ -47,6 +47,8 @@ mod policy;
 pub mod setup;
 #[cfg(windows)]
 mod tone;
+#[cfg(windows)]
+mod volume;
 
 #[cfg(windows)]
 pub use audio::WindowsAudioBackend;

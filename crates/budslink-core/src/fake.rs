@@ -1,14 +1,18 @@
 //! In-memory backend for tests and the desktop app's demo mode.
 
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 use std::thread;
 use std::time::Duration;
 
 use crate::backend::{BackendError, ChangeNotifier, DeviceBackend, Watch};
 use crate::bridge::{AudioSource, SourceBackend, UnavailableSource};
+use crate::cast::StartOutcome;
+use crate::cast_runtime::{CastBackend, CastEvent, CastEvents};
 use crate::controller::Action;
 use crate::device::{AudioDevice, AudioProfile, DeviceId};
 use crate::routing::{AudioBackend, Endpoint};
+use crate::volume::Level;
 
 /// How the fake responds to connect/disconnect requests.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -308,6 +312,8 @@ pub struct FakeAudioBackend {
     call_mode: Mutex<bool>,
     tones: Mutex<Vec<Option<String>>>,
     tone_delay: Duration,
+    masters: Mutex<Vec<Level>>,
+    sessions: Mutex<Option<(Level, Level)>>,
     notifier: Arc<Mutex<Option<ChangeNotifier>>>,
 }
 
@@ -324,6 +330,8 @@ impl FakeAudioBackend {
             call_mode: Mutex::new(false),
             tones: Mutex::new(Vec::new()),
             tone_delay: Duration::ZERO,
+            masters: Mutex::new(Vec::new()),
+            sessions: Mutex::new(None),
             notifier: Arc::default(),
         }
     }
@@ -352,6 +360,16 @@ impl FakeAudioBackend {
 
     pub fn set_call_mode(&self, active: bool) {
         *lock(&self.call_mode) = active;
+    }
+
+    /// Every master level set on the buds, in order.
+    pub fn masters(&self) -> Vec<Level> {
+        lock(&self.masters).clone()
+    }
+
+    /// The last (laptop, own) session levels applied.
+    pub fn session_levels(&self) -> Option<(Level, Level)> {
+        *lock(&self.sessions)
     }
 
     /// The endpoints the test tone was played on, in order.
@@ -404,6 +422,21 @@ impl AudioBackend for FakeAudioBackend {
         Ok(*lock(&self.call_mode))
     }
 
+    fn set_master_volume(&self, _endpoint_id: &str, level: Level) -> Result<(), BackendError> {
+        lock(&self.masters).push(level);
+        Ok(())
+    }
+
+    fn apply_session_volumes(
+        &self,
+        _endpoint_id: &str,
+        laptop: Level,
+        own: Level,
+    ) -> Result<(), BackendError> {
+        *lock(&self.sessions) = Some((laptop, own));
+        Ok(())
+    }
+
     fn play_tone(&self, endpoint_id: Option<&str>) -> Result<(), BackendError> {
         lock(&self.tones).push(endpoint_id.map(str::to_owned));
         thread::sleep(self.tone_delay);
@@ -413,6 +446,110 @@ impl AudioBackend for FakeAudioBackend {
     fn watch(&self, notify: ChangeNotifier) -> Result<Watch, BackendError> {
         *lock(&self.notifier) = Some(notify);
         Ok(Watch::new(SourceWatchGuard(Arc::clone(&self.notifier))))
+    }
+}
+
+/// A [`CastBackend`] that pretends to be a Miracast receiver. Tests make a
+/// phone cast with [`FakeCastBackend::cast`]; demo mode casts "Demo Phone"
+/// a few seconds after the receiver starts.
+pub struct FakeCastBackend {
+    private: bool,
+    demo_cast_after: Option<Duration>,
+    events: Mutex<Option<CastEvents>>,
+    started: AtomicBool,
+    plays: AtomicUsize,
+    video: AtomicBool,
+}
+
+impl FakeCastBackend {
+    pub fn new(private: bool) -> Self {
+        Self {
+            private,
+            demo_cast_after: None,
+            events: Mutex::new(None),
+            started: AtomicBool::new(false),
+            plays: AtomicUsize::new(0),
+            video: AtomicBool::new(false),
+        }
+    }
+
+    /// For demo mode: a fictional phone starts casting 6 s after start.
+    pub fn demo() -> Self {
+        Self {
+            demo_cast_after: Some(Duration::from_secs(6)),
+            ..Self::new(true)
+        }
+    }
+
+    /// Simulates a phone that starts casting.
+    pub fn cast(&self, name: &str) {
+        let events = lock(&self.events).clone();
+        if let Some(events) = events {
+            events(CastEvent::PhoneConnected {
+                name: name.to_owned(),
+                pin: None,
+            });
+            events(CastEvent::StreamStarted);
+        }
+    }
+
+    /// Simulates the phone stopping its cast.
+    pub fn end_cast(&self) {
+        let events = lock(&self.events).clone();
+        if let Some(events) = events {
+            events(CastEvent::PhoneDisconnected);
+        }
+    }
+
+    pub fn started(&self) -> bool {
+        self.started.load(Ordering::SeqCst)
+    }
+
+    pub fn plays(&self) -> usize {
+        self.plays.load(Ordering::SeqCst)
+    }
+
+    pub fn video_visible(&self) -> bool {
+        self.video.load(Ordering::SeqCst)
+    }
+}
+
+impl CastBackend for FakeCastBackend {
+    fn network_private(&self) -> Option<bool> {
+        Some(self.private)
+    }
+
+    fn start(&self, events: CastEvents) -> StartOutcome {
+        *lock(&self.events) = Some(Arc::clone(&events));
+        self.started.store(true, Ordering::SeqCst);
+        if let Some(delay) = self.demo_cast_after {
+            thread::spawn(move || {
+                thread::sleep(delay);
+                events(CastEvent::PhoneConnected {
+                    name: "Demo Phone".to_owned(),
+                    pin: None,
+                });
+                events(CastEvent::StreamStarted);
+            });
+        }
+        StartOutcome::Ready
+    }
+
+    fn stop(&self) {
+        *lock(&self.events) = None;
+        self.started.store(false, Ordering::SeqCst);
+    }
+
+    fn play(&self) {
+        self.plays.fetch_add(1, Ordering::SeqCst);
+    }
+
+    fn reject(&self) {}
+
+    fn set_volume(&self, _level: Level) {}
+
+    fn show_video(&self, visible: bool) {
+        self.video.store(visible, Ordering::SeqCst);
     }
 }
 

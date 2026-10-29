@@ -20,6 +20,7 @@ pub fn phone_menu_label(phone: &SourceView) -> String {
         BridgeState::Connecting => "connecting…",
         BridgeState::Streaming => "playing",
         BridgeState::Waiting => "waiting for phone",
+        BridgeState::Paused => "paused while the phone casts",
     };
     format!("Hear {} in buds ({status})", phone.name)
 }

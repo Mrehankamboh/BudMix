@@ -14,6 +14,7 @@ const CARD_STATE: Record<BridgeState, string> = {
   connecting: "connecting",
   waiting: "connecting",
   streaming: "connected",
+  paused: "disconnected",
 };
 
 export function PhoneAudioPanel({ phones, unavailable = [], onToggle }: PhoneAudioPanelProps) {

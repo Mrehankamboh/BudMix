@@ -90,7 +90,9 @@ mod tests {
     fn fade_in_is_gradual() {
         let tone = Tone::new(48_000);
         // Within the first millisecond the tone is still far below full level.
-        let early = (0..48).map(|frame| tone.sample(frame).abs()).fold(0.0_f32, f32::max);
+        let early = (0..48)
+            .map(|frame| tone.sample(frame).abs())
+            .fold(0.0_f32, f32::max);
         assert!(early < AMPLITUDE as f32 * 0.1);
     }
 
@@ -99,7 +101,10 @@ mod tests {
         let tone = Tone::new(44_100);
         let channels = 2;
         let mut whole = vec![0.0; tone.total_frames() as usize * channels];
-        assert_eq!(tone.fill(0, channels, &mut whole), tone.total_frames() as usize);
+        assert_eq!(
+            tone.fill(0, channels, &mut whole),
+            tone.total_frames() as usize
+        );
 
         let mut chunked = Vec::new();
         let mut frame = 0;

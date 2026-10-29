@@ -58,7 +58,10 @@ impl SystemReport {
         vec![
             checks::bluetooth_check(self.bluetooth_on),
             checks::network_check(&self.powershell.networks),
-            checks::firewall_check(self.powershell.firewall_private, self.powershell.rule_present),
+            checks::firewall_check(
+                self.powershell.firewall_private,
+                self.powershell.rule_present,
+            ),
             checks::miracast_check(self.wifi),
             checks::wireless_display_check(self.wireless_display),
         ]

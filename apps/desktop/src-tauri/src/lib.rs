@@ -8,6 +8,8 @@ mod dock;
 mod hotkey;
 mod instance;
 mod labels;
+mod phone;
+mod power;
 mod setup;
 mod state;
 mod system;
@@ -17,8 +19,8 @@ use std::sync::Arc;
 
 use budslink_core::bridge::default_retry_policy;
 use budslink_core::{
-    AudioBackend, AudioRuntime, BridgeRuntime, DeviceBackend, DeviceView, Runtime, SourceBackend,
-    route_target,
+    AudioBackend, AudioRuntime, BridgeRuntime, CastBackend, CastConfig, CastRuntime, DeviceBackend,
+    DeviceView, Runtime, SourceBackend, route_target,
 };
 use tauri::{AppHandle, Emitter, Manager, WebviewUrl, WebviewWindowBuilder, WindowEvent};
 
@@ -30,6 +32,7 @@ pub const MINIMIZED_ARG: &str = "--minimized";
 pub const DEVICES_CHANGED: &str = "devices-changed";
 pub const SOURCES_CHANGED: &str = "sources-changed";
 pub const AUDIO_CHANGED: &str = "audio-changed";
+pub const CAST_CHANGED: &str = "cast-changed";
 /// Set to `1` to use simulated devices, e.g. for demos and screenshots.
 pub const DEMO_ENV: &str = "BUDSLINK_DEMO";
 
@@ -49,6 +52,7 @@ pub fn run() {
             Some(vec![MINIMIZED_ARG]),
         ))
         .plugin(hotkey::plugin())
+        .plugin(tauri_plugin_notification::init())
         .invoke_handler(tauri::generate_handler![
             commands::app_info,
             commands::list_devices,
@@ -68,6 +72,12 @@ pub fn run() {
             commands::play_test_tone,
             commands::setup_checks,
             commands::run_fix,
+            commands::cast_state,
+            commands::approve_phone,
+            commands::reject_phone,
+            commands::forget_phone,
+            commands::set_volume,
+            commands::show_cast_video,
         ])
         .setup(|app| {
             setup(app.handle())?;
@@ -97,7 +107,7 @@ pub fn run() {
 fn setup(app: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
     let settings_path = app.path().app_config_dir()?.join("settings.json");
     let settings = state::load_settings(&settings_path);
-    let (backend, sources, audio_backend) = create_backends();
+    let (backend, sources, audio_backend, cast_backend) = create_backends();
     log::info!(
         "BudsLink {} starting with the {} backend",
         app.package_info().version,
@@ -137,12 +147,23 @@ fn setup(app: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
         Arc::clone(&sources),
         settings.bridged_phones.clone(),
         default_retry_policy(),
-        Box::new(move |views| {
-            if let Err(err) = events.emit(SOURCES_CHANGED, views) {
-                log::warn!("could not notify the UI: {err}");
-            }
-            tray::update(&events);
-        }),
+        Box::new(move |views| phone::sources_changed(&events, views)),
+    );
+    audio.handle().set_volumes(settings.volumes);
+
+    let events = app.clone();
+    let allowed_events = app.clone();
+    let last_phase = std::sync::Mutex::new(budslink_core::CastPhase::Idle);
+    let cast = CastRuntime::spawn(
+        cast_backend,
+        CastConfig {
+            mode: settings.phone_mode,
+            allowed: settings.allowed_phones.clone(),
+            volume: settings.volumes.phone_wifi,
+            show_video: settings.show_cast_video,
+        },
+        Box::new(move |status| phone::cast_changed(&events, status, &last_phase)),
+        Box::new(move |allowed| phone::allowed_changed(&allowed_events, allowed)),
     );
 
     let mica = supports_mica();
@@ -150,6 +171,7 @@ fn setup(app: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
         runtime,
         bridge,
         audio,
+        cast,
         sources,
         settings.clone(),
         settings_path,
@@ -157,8 +179,13 @@ fn setup(app: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
     ));
     let state = app.state::<AppState>();
     state.set_warnings(system::apply(app, &settings));
-    // Device updates published before the state existed were not routed.
+    // Updates published before the state existed were not acted on.
     route_laptop_audio(app, &state.runtime().views());
+    phone::sources_changed(app, &state.bridge().views());
+    if let Some(status) = state.cast().status() {
+        state.bridge().set_suspended(status.bluetooth_suspended);
+    }
+    power::watch_for_wake(app.clone());
     tray::create(app)?;
     create_main_window(app, mica)?;
     dock::create(app, mica)?;
@@ -178,7 +205,9 @@ fn setup(app: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
 fn route_laptop_audio(app: &AppHandle, views: &[DeviceView]) {
     if let Some(state) = app.try_state::<AppState>() {
         let preferred = state.settings().preferred_device;
-        state.audio().set_buds(route_target(views, preferred.as_ref()));
+        state
+            .audio()
+            .set_buds(route_target(views, preferred.as_ref()));
     }
 }
 
@@ -186,6 +215,7 @@ type Backends = (
     Arc<dyn DeviceBackend>,
     Arc<dyn SourceBackend>,
     Arc<dyn AudioBackend>,
+    Arc<dyn CastBackend>,
 );
 
 fn create_backends() -> Backends {
@@ -196,6 +226,7 @@ fn create_backends() -> Backends {
             Arc::new(budslink_win::WindowsBackend::new()),
             Arc::new(budslink_win::PhoneAudioBackend::new()),
             Arc::new(budslink_win::WindowsAudioBackend::new()),
+            Arc::new(budslink_miracast::MiracastBackend::new()),
         );
     }
     if !demo {
@@ -206,6 +237,7 @@ fn create_backends() -> Backends {
         Arc::new(devices.clone()),
         Arc::new(budslink_core::fake::FakeSourceBackend::demo()),
         Arc::new(budslink_core::fake::FakeAudioBackend::linked(devices)),
+        Arc::new(budslink_core::fake::FakeCastBackend::demo()),
     )
 }
 

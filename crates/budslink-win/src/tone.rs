@@ -9,15 +9,17 @@ use windows::Win32::Media::Audio::{
     AUDCLNT_SHAREMODE_SHARED, IAudioClient, IAudioRenderClient, IMMDevice, IMMDeviceEnumerator,
     MMDeviceEnumerator, WAVEFORMATEX, WAVEFORMATEXTENSIBLE, eConsole, eRender,
 };
-use windows::Win32::Media::KernelStreaming::KSDATAFORMAT_SUBTYPE_IEEE_FLOAT;
 use windows::Win32::System::Com::{CLSCTX_ALL, CoCreateInstance, CoTaskMemFree};
-use windows::core::{Error, PCWSTR, Result};
+use windows::core::{Error, GUID, PCWSTR, Result};
 
 use crate::com::{self, wide};
 
 const WAVE_FORMAT_IEEE_FLOAT: u16 = 3;
 const WAVE_FORMAT_PCM: u16 = 1;
 const WAVE_FORMAT_EXTENSIBLE: u16 = 0xFFFE;
+/// `KSDATAFORMAT_SUBTYPE_IEEE_FLOAT`.
+const KSDATAFORMAT_SUBTYPE_IEEE_FLOAT: GUID =
+    GUID::from_u128(0x00000003_0000_0010_8000_00aa00389b71);
 /// 200 ms buffer, in 100-ns units.
 const BUFFER_DURATION: i64 = 2_000_000;
 
@@ -62,7 +64,14 @@ unsafe fn render(client: &IAudioClient, format: *const WAVEFORMATEX) -> Result<(
 
     // SAFETY: COM calls on a live client with its own mix format.
     unsafe {
-        client.Initialize(AUDCLNT_SHAREMODE_SHARED, 0, BUFFER_DURATION, 0, format, None)?;
+        client.Initialize(
+            AUDCLNT_SHAREMODE_SHARED,
+            0,
+            BUFFER_DURATION,
+            0,
+            format,
+            None,
+        )?;
         let buffer_frames = client.GetBufferSize()?;
         let render: IAudioRenderClient = client.GetService()?;
         client.Start()?;
@@ -91,7 +100,10 @@ unsafe fn render(client: &IAudioClient, format: *const WAVEFORMATEX) -> Result<(
 
 /// # Safety
 /// `format` must point to a valid mix format whose header is `header`.
-unsafe fn sample_format(format: *const WAVEFORMATEX, header: &WAVEFORMATEX) -> Result<SampleFormat> {
+unsafe fn sample_format(
+    format: *const WAVEFORMATEX,
+    header: &WAVEFORMATEX,
+) -> Result<SampleFormat> {
     let tag = header.wFormatTag;
     let bits = header.wBitsPerSample;
     let float = match tag {

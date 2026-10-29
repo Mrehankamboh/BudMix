@@ -181,7 +181,10 @@ pub fn parse_network_profiles(json: &str) -> Vec<NetworkProfile> {
 
 fn is_wifi(profile: &NetworkProfile) -> bool {
     let alias = profile.interface_alias.to_lowercase();
-    alias.contains("wi-fi") || alias.contains("wifi") || alias.contains("wlan") || alias.contains("wireless")
+    alias.contains("wi-fi")
+        || alias.contains("wifi")
+        || alias.contains("wlan")
+        || alias.contains("wireless")
 }
 
 pub fn network_check(profiles: &[NetworkProfile]) -> CheckResult {
@@ -426,8 +429,12 @@ mod tests {
         assert_eq!(report.networks.len(), 1);
         assert_eq!(report.firewall_private, Some(true));
         assert!(!report.rule_present);
-        assert_eq!(parse_powershell_report("not json"), PowerShellReport::default());
-        let report = parse_powershell_report(r#"{"FirewallPrivate":"NotConfigured","RuleCount":2}"#);
+        assert_eq!(
+            parse_powershell_report("not json"),
+            PowerShellReport::default()
+        );
+        let report =
+            parse_powershell_report(r#"{"FirewallPrivate":"NotConfigured","RuleCount":2}"#);
         assert_eq!(report.firewall_private, None);
         assert!(report.rule_present);
     }
@@ -549,7 +556,10 @@ Wireless Device Capabilities
     fn pairing_states() {
         assert_eq!(buds_paired_check(&[]).status, CheckStatus::Problem);
         assert_eq!(buds_paired_check(&["TWS".into()]).status, CheckStatus::Ok);
-        assert_eq!(phone_paired_check(&["Infinix".into()], &[]).status, CheckStatus::Ok);
+        assert_eq!(
+            phone_paired_check(&["Infinix".into()], &[]).status,
+            CheckStatus::Ok
+        );
         let unavailable = phone_paired_check(&[], &["Infinix".into()]);
         assert_eq!(unavailable.status, CheckStatus::Warning);
         assert!(unavailable.detail.contains("pair it again"));

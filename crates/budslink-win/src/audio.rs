@@ -2,7 +2,7 @@
 //! playback endpoint, the call-mode (hands-free) check and the test tone.
 
 use budslink_core::{
-    AudioBackend, AudioProfile, BackendError, ChangeNotifier, DeviceId, Endpoint, Watch,
+    AudioBackend, AudioProfile, BackendError, ChangeNotifier, DeviceId, Endpoint, Level, Watch,
 };
 use windows::Win32::Foundation::ERROR_NOT_FOUND;
 use windows::Win32::Media::Audio::{
@@ -15,15 +15,18 @@ use windows::core::PCWSTR;
 use crate::classify::EndpointInfo;
 use crate::com::{self, wide};
 use crate::notify::Registration;
+use crate::volume::SessionLevels;
 use crate::{endpoints, policy, tone};
 
 /// Core Audio based [`AudioBackend`].
 #[derive(Default)]
-pub struct WindowsAudioBackend;
+pub struct WindowsAudioBackend {
+    levels: SessionLevels,
+}
 
 impl WindowsAudioBackend {
     pub fn new() -> Self {
-        Self
+        Self::default()
     }
 
     fn enumerator() -> Result<IMMDeviceEnumerator, BackendError> {
@@ -39,8 +42,9 @@ impl WindowsAudioBackend {
         capture: bool,
     ) -> Result<Vec<(String, EndpointInfo)>, BackendError> {
         let flow = if capture { eCapture } else { eRender };
-        let endpoints = endpoints::bluetooth_endpoints_with_ids(enumerator, flow, DEVICE_STATE_ACTIVE)
-            .map_err(os_error)?;
+        let endpoints =
+            endpoints::bluetooth_endpoints_with_ids(enumerator, flow, DEVICE_STATE_ACTIVE)
+                .map_err(os_error)?;
         Ok(endpoints
             .into_iter()
             .filter(|(_, info)| info.container_id.eq_ignore_ascii_case(buds.as_str()))
@@ -113,6 +117,27 @@ impl AudioBackend for WindowsAudioBackend {
             }
         }
         Ok(false)
+    }
+
+    fn set_master_volume(&self, endpoint_id: &str, level: Level) -> Result<(), BackendError> {
+        SessionLevels::set_master(&Self::enumerator()?, endpoint_id, level).map_err(os_error)
+    }
+
+    fn apply_session_volumes(
+        &self,
+        endpoint_id: &str,
+        laptop: Level,
+        own: Level,
+    ) -> Result<(), BackendError> {
+        self.levels
+            .apply(&Self::enumerator()?, endpoint_id, laptop, own)
+            .map_err(os_error)
+    }
+
+    fn restore_session_volumes(&self, endpoint_id: &str) -> Result<(), BackendError> {
+        self.levels
+            .restore(&Self::enumerator()?, endpoint_id)
+            .map_err(os_error)
     }
 
     fn play_tone(&self, endpoint_id: Option<&str>) -> Result<(), BackendError> {

@@ -4,18 +4,22 @@ import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import type {
   AppInfo,
   AudioView,
+  CastStatus,
   CheckResult,
   DeviceView,
   Fix,
+  Level,
   Settings,
   SourceView,
   UnavailablePhone,
+  VolumeSource,
 } from "./types";
 
 export const DEVICES_CHANGED = "devices-changed";
 export const SETTINGS_CHANGED = "settings-changed";
 export const SOURCES_CHANGED = "sources-changed";
 export const AUDIO_CHANGED = "audio-changed";
+export const CAST_CHANGED = "cast-changed";
 
 export const api = {
   appInfo: () => invoke<AppInfo>("app_info"),
@@ -41,6 +45,16 @@ export const api = {
     listen<AudioView>(AUDIO_CHANGED, (event) => handler(event.payload)),
   /** Plays the test beep into the buds; resolves once it has played. */
   playTestTone: () => invoke<void>("play_test_tone"),
+  /** Phone audio over Wi-Fi; null until the receiver runtime reports. */
+  castState: () => invoke<CastStatus | null>("cast_state"),
+  onCastChanged: (handler: (cast: CastStatus) => void): Promise<UnlistenFn> =>
+    listen<CastStatus>(CAST_CHANGED, (event) => handler(event.payload)),
+  /** Lets the phone that waits play; `remember` allows it from now on. */
+  approvePhone: (remember: boolean) => invoke<void>("approve_phone", { remember }),
+  rejectPhone: () => invoke<void>("reject_phone"),
+  forgetPhone: (name: string) => invoke<void>("forget_phone", { name }),
+  setVolume: (source: VolumeSource, level: Level) => invoke<void>("set_volume", { source, level }),
+  showCastVideo: (visible: boolean) => invoke<void>("show_cast_video", { visible }),
   /** Every prerequisite with its status and fix (takes a second or two). */
   setupChecks: () => invoke<CheckResult[]>("setup_checks"),
   /** Runs the fix behind a check's button; admin fixes show one Windows prompt. */

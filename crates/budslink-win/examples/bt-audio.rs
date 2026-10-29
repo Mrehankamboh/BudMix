@@ -97,12 +97,16 @@ fn main() {
             }
             if let Some(id) = args.get(1).map(DeviceId::new) {
                 match audio.buds_output(&id) {
-                    Ok(Some(output)) => println!("buds output:    {}  ({})", output.name, output.id),
+                    Ok(Some(output)) => {
+                        println!("buds output:    {}  ({})", output.name, output.id)
+                    }
                     Ok(None) => println!("buds output:    none (not connected?)"),
                     Err(err) => eprintln!("finding the buds output failed: {err}"),
                 }
                 match audio.call_mode(&id) {
-                    Ok(true) => println!("call mode:      YES, an app is using the buds' mic (HFP)"),
+                    Ok(true) => {
+                        println!("call mode:      YES, an app is using the buds' mic (HFP)")
+                    }
                     Ok(false) => println!("call mode:      no (stereo quality)"),
                     Err(err) => eprintln!("call-mode check failed: {err}"),
                 }

@@ -1293,3 +1293,190 @@ button {
   justify-content: flex-end;
   gap: 8px;
 }
+
+/* sources */
+
+.sources {
+  display: grid;
+  gap: 6px;
+  margin: 8px 0;
+  padding: 0;
+  list-style: none;
+}
+
+.source {
+  display: grid;
+  gap: 4px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--fill-2);
+}
+
+.source__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.source__text {
+  display: grid;
+  flex: 1;
+  min-width: 0;
+}
+
+.source__title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.source__text small {
+  color: var(--text-2);
+}
+
+.source .row__dot {
+  background: var(--text-2);
+}
+
+.source--playing .row__dot {
+  background: var(--phone);
+}
+
+.source--connecting .row__dot,
+.source--reconnecting .row__dot,
+.source--waiting .row__dot {
+  background: var(--busy);
+}
+
+.source--error .row__dot {
+  background: var(--alert);
+}
+
+.volume {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.volume input[type="range"] {
+  flex: 1;
+  min-width: 0;
+  accent-color: var(--accent);
+}
+
+.volume__value {
+  width: 44px;
+  text-align: right;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-2);
+}
+
+.subhead {
+  margin: 12px 0 6px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.allowed {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.allowed li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+/* casting phone */
+
+.cast-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  margin: 0 0 8px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--phone) 12%, transparent);
+  font-size: 12px;
+}
+
+.cast-banner--ask {
+  display: grid;
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+.cast-banner__title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-weight: 600;
+}
+
+.cast-banner__pin {
+  margin: 0;
+}
+
+.cast-banner__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+/* settings: select field, phone guide */
+
+.field {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 10px 0;
+}
+
+.field > span {
+  display: grid;
+  gap: 2px;
+}
+
+.field small {
+  color: var(--text-2);
+}
+
+.field select {
+  min-width: 0;
+  max-width: 100%;
+  padding: 4px 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--fill-2);
+  color: inherit;
+  font: inherit;
+}
+
+.guide details {
+  margin: 6px 0;
+}
+
+.guide summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.guide ol,
+.guide ul {
+  margin: 6px 0;
+  padding-left: 20px;
+}
+
+.guide li {
+  margin: 3px 0;
+}

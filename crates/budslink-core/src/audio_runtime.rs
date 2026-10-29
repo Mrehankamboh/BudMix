@@ -11,6 +11,7 @@ use serde::Serialize;
 use crate::backend::ChangeNotifier;
 use crate::device::DeviceId;
 use crate::routing::{AudioBackend, Endpoint, OutputRouter, RouteAction};
+use crate::volume::Volumes;
 
 /// While buds are connected: how often to look for an app using their mic.
 /// Core Audio sends no notification for that.
@@ -35,6 +36,7 @@ pub struct AudioView {
     pub call_mode: bool,
     /// The output to give back later (persisted by the app).
     pub saved_output: Option<String>,
+    pub volumes: Volumes,
     pub last_error: Option<String>,
 }
 
@@ -45,6 +47,8 @@ enum Request {
     Refresh,
     SetBuds(Option<DeviceId>),
     SetRouting(bool),
+    SetVolumes(Volumes),
+    SetBluetoothPlaying(bool),
     PlayTone(Sender<Result<(), String>>),
     /// Restore the previous default output and stop; the sender, if any, is
     /// told when that is done.
@@ -69,6 +73,17 @@ impl AudioHandle {
 
     pub fn refresh(&self) {
         self.post(Request::Refresh);
+    }
+
+    /// New slider levels; the master level is applied to the buds once.
+    pub fn set_volumes(&self, volumes: Volumes) {
+        self.post(Request::SetVolumes(volumes));
+    }
+
+    /// Whether the Bluetooth phone stream is playing (it shares BudsLink's
+    /// own audio session with the cast).
+    pub fn set_bluetooth_playing(&self, playing: bool) {
+        self.post(Request::SetBluetoothPlaying(playing));
     }
 
     /// Plays the test tone into the buds (or the default output) and blocks
@@ -132,6 +147,9 @@ impl AudioRuntime {
                     buds_output: None,
                     default_output: None,
                     call_mode: false,
+                    volumes: Volumes::default(),
+                    master_pending: false,
+                    bluetooth_playing: false,
                     last_error: None,
                     view,
                     on_update,
@@ -167,6 +185,10 @@ struct Worker {
     buds_output: Option<Endpoint>,
     default_output: Option<Endpoint>,
     call_mode: bool,
+    volumes: Volumes,
+    /// The master slider moved; set the buds' volume once.
+    master_pending: bool,
+    bluetooth_playing: bool,
     last_error: Option<String>,
     view: Arc<Mutex<AudioView>>,
     on_update: AudioListener,
@@ -201,13 +223,17 @@ impl Worker {
                 Err(RecvTimeoutError::Disconnected) => break,
                 Ok(Request::Refresh) | Err(RecvTimeoutError::Timeout) => {}
                 Ok(Request::SetBuds(buds)) => self.buds = buds,
+                Ok(Request::SetVolumes(volumes)) => {
+                    self.master_pending |= volumes.master != self.volumes.master;
+                    self.volumes = volumes;
+                }
+                Ok(Request::SetBluetoothPlaying(playing)) => self.bluetooth_playing = playing,
                 Ok(Request::SetRouting(enabled)) => {
                     self.read_state();
-                    let action = self.router.set_enabled(
-                        enabled,
-                        self.buds_id(),
-                        self.default_id(),
-                    );
+                    let (buds, current) = self.ids();
+                    let action =
+                        self.router
+                            .set_enabled(enabled, buds.as_deref(), current.as_deref());
                     self.execute(action);
                 }
                 Ok(Request::PlayTone(reply)) => {
@@ -223,8 +249,14 @@ impl Worker {
         }
 
         self.read_state();
-        let action = self.router.shutdown(self.buds_id(), self.default_id());
+        let (buds, current) = self.ids();
+        let action = self.router.shutdown(buds.as_deref(), current.as_deref());
         self.execute(action);
+        if let Some(output) = &self.buds_output {
+            if let Err(err) = self.backend.restore_session_volumes(&output.id) {
+                log::warn!("giving apps their volume back failed: {err}");
+            }
+        }
         if let Some(done) = done {
             let _ = done.send(());
         }
@@ -232,12 +264,36 @@ impl Worker {
 
     fn refresh_and_route(&mut self) {
         self.read_state();
-        let action = self.router.update(self.buds_id(), self.default_id());
+        let (buds, current) = self.ids();
+        let action = self.router.update(buds.as_deref(), current.as_deref());
         if action.is_some() {
             self.execute(action);
             self.read_state();
         }
+        self.apply_volumes();
         self.publish();
+    }
+
+    fn apply_volumes(&mut self) {
+        let Some(output) = self.buds_output.clone() else {
+            return;
+        };
+        if self.master_pending {
+            self.master_pending = false;
+            if let Err(err) = self
+                .backend
+                .set_master_volume(&output.id, self.volumes.master)
+            {
+                log::warn!("setting the buds' volume failed: {err}");
+            }
+        }
+        let own = self.volumes.own_session(self.bluetooth_playing);
+        if let Err(err) = self
+            .backend
+            .apply_session_volumes(&output.id, self.volumes.laptop, own)
+        {
+            log::debug!("applying app volumes failed: {err}");
+        }
     }
 
     fn read_state(&mut self) {
@@ -285,12 +341,23 @@ impl Worker {
         }
     }
 
+    /// Owned copies of the buds' and the default output's ids, so the
+    /// router can be updated while they are in use.
+    fn ids(&self) -> (Option<String>, Option<String>) {
+        (
+            self.buds_id().map(str::to_owned),
+            self.default_id().map(str::to_owned),
+        )
+    }
+
     fn buds_id(&self) -> Option<&str> {
         self.buds_output.as_ref().map(|output| output.id.as_str())
     }
 
     fn default_id(&self) -> Option<&str> {
-        self.default_output.as_ref().map(|output| output.id.as_str())
+        self.default_output
+            .as_ref()
+            .map(|output| output.id.as_str())
     }
 
     fn publish(&self) {
@@ -302,6 +369,7 @@ impl Worker {
             laptop_in_buds: self.buds_id().is_some() && self.buds_id() == self.default_id(),
             call_mode: self.call_mode,
             saved_output: self.router.saved().map(str::to_owned),
+            volumes: self.volumes,
             last_error: self.last_error.clone(),
         };
         let mut current = self.view.lock().unwrap_or_else(PoisonError::into_inner);
@@ -346,9 +414,15 @@ mod tests {
         let handle = runtime.handle();
         handle.set_buds(Some(DeviceId::new(FakeAudioBackend::BUDS)));
         let view = wait_for(&handle, |view| view.laptop_in_buds);
-        assert_eq!(view.saved_output.as_deref(), Some(FakeAudioBackend::SPEAKERS_ENDPOINT));
+        assert_eq!(
+            view.saved_output.as_deref(),
+            Some(FakeAudioBackend::SPEAKERS_ENDPOINT)
+        );
         drop(runtime);
-        assert_eq!(backend.default_id().as_deref(), Some(FakeAudioBackend::SPEAKERS_ENDPOINT));
+        assert_eq!(
+            backend.default_id().as_deref(),
+            Some(FakeAudioBackend::SPEAKERS_ENDPOINT)
+        );
     }
 
     #[test]
@@ -359,8 +433,51 @@ mod tests {
         handle.set_buds(Some(DeviceId::new(FakeAudioBackend::BUDS)));
         wait_for(&handle, |view| view.laptop_in_buds);
         handle.stop();
-        assert_eq!(backend.default_id().as_deref(), Some(FakeAudioBackend::SPEAKERS_ENDPOINT));
+        assert_eq!(
+            backend.default_id().as_deref(),
+            Some(FakeAudioBackend::SPEAKERS_ENDPOINT)
+        );
         drop(runtime);
+    }
+
+    #[test]
+    fn applies_the_master_once_and_session_levels_on_every_refresh() {
+        use crate::volume::{Level, VolumeSource};
+
+        let backend = Arc::new(FakeAudioBackend::new());
+        let runtime = spawn(&backend, true);
+        let handle = runtime.handle();
+        handle.set_buds(Some(DeviceId::new(FakeAudioBackend::BUDS)));
+        wait_for(&handle, |view| view.laptop_in_buds);
+
+        let mut volumes = Volumes::default();
+        let half = Level {
+            percent: 50,
+            muted: false,
+        };
+        let quiet = Level {
+            percent: 20,
+            muted: false,
+        };
+        volumes.set(VolumeSource::Master, half);
+        volumes.set(VolumeSource::Laptop, quiet);
+        volumes.set(VolumeSource::PhoneBluetooth, half);
+        handle.set_volumes(volumes);
+        wait_for(&handle, |view| view.volumes == volumes);
+        assert_eq!(backend.masters(), vec![half]);
+        assert_eq!(backend.session_levels(), Some((quiet, Level::FULL)));
+
+        handle.set_bluetooth_playing(true);
+        handle.refresh();
+        let deadline = Instant::now() + Duration::from_secs(5);
+        while backend.session_levels() != Some((quiet, half)) {
+            assert!(
+                Instant::now() < deadline,
+                "own session never followed the phone"
+            );
+            thread::sleep(Duration::from_millis(10));
+        }
+        assert_eq!(backend.masters(), vec![half], "master is not re-applied");
     }
 
     #[test]
@@ -371,7 +488,10 @@ mod tests {
         handle.set_buds(Some(DeviceId::new(FakeAudioBackend::BUDS)));
         let view = wait_for(&handle, |view| view.buds_output.is_some());
         assert!(!view.laptop_in_buds);
-        assert_eq!(backend.default_id().as_deref(), Some(FakeAudioBackend::SPEAKERS_ENDPOINT));
+        assert_eq!(
+            backend.default_id().as_deref(),
+            Some(FakeAudioBackend::SPEAKERS_ENDPOINT)
+        );
     }
 
     #[test]

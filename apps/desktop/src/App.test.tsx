@@ -26,6 +26,13 @@ vi.mock("./lib/api", () => ({
     playTestTone: vi.fn(),
     setupChecks: vi.fn(),
     runFix: vi.fn(),
+    castState: vi.fn(),
+    onCastChanged: vi.fn(),
+    approvePhone: vi.fn(),
+    rejectPhone: vi.fn(),
+    forgetPhone: vi.fn(),
+    setVolume: vi.fn(),
+    showCastVideo: vi.fn(),
   },
 }));
 
@@ -43,6 +50,16 @@ const settings: Settings = {
   routeLaptopAudio: true,
   savedOutput: null,
   setupDone: true,
+  phoneMode: "auto",
+  allowedPhones: [],
+  volumes: {
+    master: { percent: 100, muted: false },
+    laptop: { percent: 100, muted: false },
+    phoneWifi: { percent: 100, muted: false },
+    phoneBluetooth: { percent: 100, muted: false },
+  },
+  showCastVideo: true,
+  phonesSeeded: true,
 };
 
 const audio: AudioView = {
@@ -87,6 +104,17 @@ beforeEach(() => {
   mocked.playTestTone.mockResolvedValue(undefined);
   mocked.setupChecks.mockResolvedValue([]);
   mocked.runFix.mockResolvedValue(undefined);
+  mocked.castState.mockResolvedValue(null);
+  mocked.onCastChanged.mockResolvedValue(() => {});
+  for (const fn of [
+    mocked.approvePhone,
+    mocked.rejectPhone,
+    mocked.forgetPhone,
+    mocked.setVolume,
+    mocked.showCastVideo,
+  ]) {
+    fn.mockResolvedValue(undefined);
+  }
   mocked.appInfo.mockResolvedValue(info);
   mocked.getSettings.mockResolvedValue(settings);
   mocked.listDevices.mockResolvedValue([buds]);

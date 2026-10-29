@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from "react";
 
-import type { Settings } from "../lib/types";
+import type { PhoneMode, Settings } from "../lib/types";
 
 interface SettingsPanelProps {
   settings: Settings;
@@ -52,6 +52,33 @@ export function SettingsPanel({ settings, warnings, onChange }: SettingsPanelPro
             Makes the connected buds the default output, and gives your previous output back when
             they disconnect or you turn this off.
           </small>
+        </span>
+      </label>
+
+      <label className="field">
+        <span>
+          Phone connection
+          <small>Auto uses Wi-Fi while the phone casts and Bluetooth otherwise, never both at once.</small>
+        </span>
+        <select
+          value={settings.phoneMode}
+          onChange={(event) => onChange({ ...settings, phoneMode: event.target.value as PhoneMode })}
+        >
+          <option value="auto">Auto (Wi-Fi when casting, else Bluetooth)</option>
+          <option value="wifiOnly">Wi-Fi only (Cast)</option>
+          <option value="bluetoothOnly">Bluetooth only</option>
+        </select>
+      </label>
+
+      <label className="switch">
+        <input
+          type="checkbox"
+          checked={settings.showCastVideo}
+          onChange={(event) => onChange({ ...settings, showCastVideo: event.target.checked })}
+        />
+        <span>
+          Show the phone&apos;s screen while it casts
+          <small>A small window you can hide anytime. The sound keeps playing either way.</small>
         </span>
       </label>
 

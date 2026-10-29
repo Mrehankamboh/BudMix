@@ -10,6 +10,7 @@ use serde::Serialize;
 use crate::backend::{BackendError, ChangeNotifier, Watch};
 use crate::controller::DeviceView;
 use crate::device::{ConnectionState, DeviceId};
+use crate::volume::Level;
 
 /// A playback endpoint as Windows names it.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -43,6 +44,24 @@ pub trait AudioBackend: Send + Sync {
     /// Plays a short beep on `endpoint_id` (or the default output) and
     /// returns when it has finished.
     fn play_tone(&self, endpoint_id: Option<&str>) -> Result<(), BackendError>;
+    /// Sets the buds' own volume (the master slider).
+    fn set_master_volume(&self, _endpoint_id: &str, _level: Level) -> Result<(), BackendError> {
+        Ok(())
+    }
+    /// Applies `laptop` to every other app playing on the endpoint and `own`
+    /// to BudsLink's own audio session (the phone).
+    fn apply_session_volumes(
+        &self,
+        _endpoint_id: &str,
+        _laptop: Level,
+        _own: Level,
+    ) -> Result<(), BackendError> {
+        Ok(())
+    }
+    /// Gives other apps the volume they had before BudsLink changed it.
+    fn restore_session_volumes(&self, _endpoint_id: &str) -> Result<(), BackendError> {
+        Ok(())
+    }
     /// Calls `notify` when playback devices or the default device change.
     fn watch(&self, notify: ChangeNotifier) -> Result<Watch, BackendError>;
 }
@@ -238,7 +257,10 @@ mod tests {
     fn turning_off_restores_only_if_the_buds_are_still_default() {
         let mut router = OutputRouter::new(true, None);
         router.update(Some(BUDS), Some(SPEAKERS));
-        assert_eq!(router.set_enabled(false, Some(BUDS), Some(BUDS)), restore(SPEAKERS));
+        assert_eq!(
+            router.set_enabled(false, Some(BUDS), Some(BUDS)),
+            restore(SPEAKERS)
+        );
 
         let mut router = OutputRouter::new(true, None);
         router.update(Some(BUDS), Some(SPEAKERS));
@@ -249,7 +271,10 @@ mod tests {
     #[test]
     fn turning_on_routes_immediately() {
         let mut router = OutputRouter::new(false, None);
-        assert_eq!(router.set_enabled(true, Some(BUDS), Some(SPEAKERS)), use_buds());
+        assert_eq!(
+            router.set_enabled(true, Some(BUDS), Some(SPEAKERS)),
+            use_buds()
+        );
     }
 
     #[test]

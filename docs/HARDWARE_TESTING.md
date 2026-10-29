@@ -16,7 +16,7 @@ cargo run -p budslink-miracast --example cast-probe
 
 | ID | Check | Expected | Result |
 |---|---|---|---|
-| M0-1 | The probe starts | `verdict: Ready` and `listening=Listening`. If it prints `FAILED`, copy the whole output | |
+| M0-1 | The probe starts | `verdict: Ready` and `listening=Listening`. If it prints `FAILED`, copy the whole output | PASS on the reference laptop (2026-10-30): `wifi=Supported settings=Success start=Success listening=Listening` |
 | M0-2 | The phone finds the laptop | Infinix Cast list shows **BudsLink** within ~10 s | |
 | M0-3 | Infinix menu names | Write down the real path to Cast and to "Enable wireless display" | |
 | M0-4 | The phone connects | The probe prints `phone connecting: ...` then `stream from ... is playing` | |
@@ -69,3 +69,55 @@ cargo run -p budslink-win --example bt-audio -- list
 | M2-8 | Test beep row | **Play beep** is heard in the buds; **Yes** marks it OK | |
 | M2-9 | **Done** / **Finish later** | Next start opens the dock, not the wizard; the check stays available in settings | |
 | M2-10 | Troubleshooting → Copy diagnostics | The text includes Windows build, Bluetooth radio, networks with their category, firewall, Miracast sink, laptop audio and Bluetooth devices | |
+
+## M3: phone over Wi-Fi inside the app
+
+Start the app (`pnpm tauri dev` in `apps/desktop`, or the installed BudsLink). The network must be Private (M2-4).
+
+| ID | Check | Expected | Result |
+|---|---|---|---|
+| M3-1 | Dock → Sources → "Phone over Wi-Fi" | "Waiting · Ready: tap Cast → "BudsLink" on the phone" | |
+| M3-2 | Infinix: Cast → **BudsLink** (first time) | Dock opens with "Infinix … wants to play in your buds"; a notification says the same | |
+| M3-3 | **Allow always** | Phone audio plays in the buds; notification "Phone audio is now in your buds"; Sources shows "Infinix (Wi-Fi) · Playing" | |
+| M3-4 | Laptop: play a YouTube video at the same time | Both are heard in the buds, mixed | |
+| M3-5 | Phone screen window | A small window shows the phone screen; closing it hides it and the sound keeps playing; **Show phone screen** brings it back | |
+| M3-6 | Disconnect on the phone, cast again | No question the second time (allowlist); plays at once | |
+| M3-7 | Settings → Sources → Forget the phone, cast again | Asked again | |
+| M3-8 | **Refuse** a cast | The phone disconnects | |
+| M3-9 | Turn the network Public (Windows Settings) | Within ~10 s the receiver stops; Sources says "Network is Public: receiver off" | |
+
+## M4: Bluetooth fallback, Auto switching, volumes
+
+| ID | Check | Expected | Result |
+|---|---|---|---|
+| M4-1 | Phone connection = Auto, phone not casting, phone paired | BudsLink connects the phone over Bluetooth by itself; Sources "Infinix (Bluetooth) · Playing" when the phone plays | |
+| M4-2 | While Bluetooth plays, start casting | Bluetooth shows "Paused · Held off while the phone casts"; no echo (the sound is heard once) | |
+| M4-3 | Stop casting | About 3 s later Bluetooth comes back by itself | |
+| M4-4 | Phone connection = Wi-Fi only | Bluetooth stays paused; casting works | |
+| M4-5 | Phone connection = Bluetooth only | Phone over Wi-Fi shows Off; the phone no longer lists BudsLink | |
+| M4-6 | Move each slider and mute button (Buds, Laptop, Phone Wi-Fi, Phone Bluetooth) | Only that source changes; Buds changes the Windows volume of the buds | |
+| M4-7 | Quit BudsLink after lowering Laptop | Other apps get their own volume back | |
+
+## M5: reliability
+
+| ID | Check | Expected | Result |
+|---|---|---|---|
+| M5-1 | Sleep the laptop 5 minutes with buds connected, wake it | Buds reconnect (or connect when taken out); receiver ready again | |
+| M5-2 | Turn Wi-Fi off and on | Receiver restarts by itself (Sources: Reconnecting → Waiting) | |
+| M5-3 | Buds out of range for 1 minute, come back | Auto-reconnect brings them back; laptop audio returns to the buds | |
+| M5-4 | Case open/close several times | Same as M5-3; previous output restored while they are away | |
+| M5-5 | Restart BudsLink while casting | The phone reconnects or recasts; nothing plays twice | |
+| M5-6 | Start with Windows on, reboot | BudsLink is in the tray, receiver ready, no window opened | |
+| M5-7 | Installer `BudsLink_<version>_x64-setup.exe` | Installs for the current user without an admin prompt; Start menu entry; uninstaller works | |
+| M5-8 | **1 hour**: laptop video + phone video (cast) together | No clicks, pops, crackles or drift; note any dropouts with the time | |
+
+## Results
+
+| Field | Value |
+|---|---|
+| Laptop / Wi-Fi card | Lenovo, Intel Dual Band Wireless-AC 8265 (Miracast Sink: Supported) |
+| Windows build | 26300 |
+| Buds | TWS |
+| Phone | Infinix Hot 11 Play, Android 11, XOS |
+| Latency (Wi-Fi / Bluetooth) | |
+| Problems seen | |

@@ -43,6 +43,7 @@ const BRIDGE_LABELS: Record<BridgeState, string> = {
   connecting: "Connecting to the phone…",
   streaming: "Playing phone audio",
   waiting: "Waiting for the phone (retrying)",
+  paused: "Paused: the phone casts over Wi-Fi",
 };
 
 export function bridgeStatusLabel(state: BridgeState): string {

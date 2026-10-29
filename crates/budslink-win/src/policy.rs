@@ -5,8 +5,8 @@
 //! and AudioDeviceCmdlets rely on it too. It is undocumented, so a future
 //! Windows update could change it: failures are reported, never hidden.
 
-// The vtable declares methods BudsLink never calls.
-#![allow(dead_code)]
+// The vtable declares methods BudsLink never calls, with their Windows names.
+#![allow(dead_code, non_snake_case)]
 
 use std::ffi::c_void;
 
@@ -76,7 +76,8 @@ pub(crate) fn set_default_output(endpoint_id: &str) -> Result<()> {
     // SAFETY: plain COM activation and calls; `id` outlives the calls and
     // is null-terminated.
     unsafe {
-        let policy: IPolicyConfig = CoCreateInstance(&CLSID_POLICY_CONFIG_CLIENT, None, CLSCTX_ALL)?;
+        let policy: IPolicyConfig =
+            CoCreateInstance(&CLSID_POLICY_CONFIG_CLIENT, None, CLSCTX_ALL)?;
         for role in [eConsole, eMultimedia] {
             policy.SetDefaultEndpoint(PCWSTR(id.as_ptr()), role).ok()?;
         }

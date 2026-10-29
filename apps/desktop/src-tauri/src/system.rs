@@ -41,9 +41,12 @@ fn sync_autostart(app: &AppHandle, wanted: bool) -> Result<(), String> {
 /// Saves new settings from the UI or tray and applies them everywhere.
 pub fn update_settings(app: &AppHandle, settings: Settings) -> Result<AppInfo, String> {
     let state = app.state::<AppState>();
-    // The output to restore belongs to the audio runtime, not the UI.
+    // These belong to the runtimes, not the UI: keep what they saved.
+    let owned = state.settings();
     let settings = Settings {
-        saved_output: state.settings().saved_output,
+        saved_output: owned.saved_output,
+        allowed_phones: owned.allowed_phones,
+        phones_seeded: owned.phones_seeded,
         ..settings
     }
     .sanitized();

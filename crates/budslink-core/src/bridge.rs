@@ -99,6 +99,9 @@ pub enum BridgeState {
     Streaming,
     /// Wanted, but the phone isn't streaming; another attempt is scheduled.
     Waiting,
+    /// Wanted, but held off while the phone's audio arrives another way
+    /// (casting over Wi-Fi), so it never plays twice.
+    Paused,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -143,6 +146,8 @@ pub struct BridgeController {
     /// Phones the user turned on; kept even while a phone is unpaired or away.
     enabled: BTreeSet<DeviceId>,
     entries: BTreeMap<DeviceId, Entry>,
+    /// Every stream held off (see [`BridgeState::Paused`]).
+    suspended: bool,
 }
 
 impl BridgeController {
@@ -151,7 +156,41 @@ impl BridgeController {
             policy,
             enabled: enabled.into_iter().collect(),
             entries: BTreeMap::new(),
+            suspended: false,
         }
+    }
+
+    /// Holds every phone stream off (closing open ones) or lets them come
+    /// back. Used so a phone that casts over Wi-Fi isn't also heard over
+    /// Bluetooth.
+    pub fn set_suspended(&mut self, suspended: bool, now: Instant) -> Vec<BridgeAction> {
+        if self.suspended == suspended {
+            return Vec::new();
+        }
+        self.suspended = suspended;
+        let mut actions = Vec::new();
+        for (id, entry) in &mut self.entries {
+            if !self.enabled.contains(id) {
+                continue;
+            }
+            entry.failures = 0;
+            if suspended {
+                if entry.source.streaming || entry.state == BridgeState::Connecting {
+                    actions.push(BridgeAction::Close(id.clone()));
+                }
+                entry.source.streaming = false;
+                entry.state = BridgeState::Paused;
+                entry.retry_at = None;
+            } else {
+                entry.state = BridgeState::Waiting;
+                entry.retry_at = Some(now);
+            }
+        }
+        actions
+    }
+
+    pub fn is_suspended(&self) -> bool {
+        self.suspended
     }
 
     pub fn enabled(&self) -> Vec<DeviceId> {
@@ -166,7 +205,10 @@ impl BridgeController {
             match self.entries.get_mut(&source.id) {
                 Some(entry) => {
                     entry.source = source;
-                    Self::observe(entry, wanted, now, &self.policy);
+                    Self::observe(entry, wanted && !self.suspended, now, &self.policy);
+                    if wanted && self.suspended && entry.state == BridgeState::Off {
+                        entry.state = BridgeState::Paused;
+                    }
                 }
                 None => {
                     let mut entry = Entry {
@@ -178,6 +220,8 @@ impl BridgeController {
                     };
                     if entry.source.streaming {
                         entry.state = BridgeState::Streaming;
+                    } else if wanted && self.suspended {
+                        entry.state = BridgeState::Paused;
                     } else if wanted {
                         // Turned on in an earlier session: try right away.
                         entry.state = BridgeState::Waiting;
@@ -225,7 +269,10 @@ impl BridgeController {
         entry.failures = 0;
         entry.last_error = None;
         if enabled {
-            if !entry.source.streaming && entry.state != BridgeState::Connecting {
+            if self.suspended && !entry.source.streaming {
+                entry.state = BridgeState::Paused;
+                entry.retry_at = None;
+            } else if !entry.source.streaming && entry.state != BridgeState::Connecting {
                 entry.state = BridgeState::Waiting;
                 entry.retry_at = Some(now);
             }
@@ -245,6 +292,9 @@ impl BridgeController {
     /// Starts due attempts.
     pub fn tick(&mut self, now: Instant) -> Vec<BridgeAction> {
         let mut actions = Vec::new();
+        if self.suspended {
+            return actions;
+        }
         for (id, entry) in &mut self.entries {
             let due = entry.retry_at.is_some_and(|at| now >= at);
             if due && self.enabled.contains(id) && !entry.source.streaming {
@@ -374,6 +424,64 @@ mod tests {
         let mut c = BridgeController::new([id()], default_retry_policy());
         c.apply_snapshot(vec![phone(false)], start);
         assert_eq!(c.tick(start), vec![BridgeAction::Open(id())]);
+    }
+
+    #[test]
+    fn suspending_closes_the_stream_and_holds_it_off() {
+        let start = Instant::now();
+        let mut c = BridgeController::new([id()], default_retry_policy());
+        c.apply_snapshot(vec![phone(true)], start);
+        assert_eq!(view(&c).state, BridgeState::Streaming);
+
+        assert_eq!(
+            c.set_suspended(true, start),
+            vec![BridgeAction::Close(id())]
+        );
+        assert_eq!(view(&c).state, BridgeState::Paused);
+        assert!(c.is_suspended());
+        // The phone stops streaming; nothing is retried while suspended.
+        c.apply_snapshot(vec![phone(false)], start + secs(1));
+        assert_eq!(view(&c).state, BridgeState::Paused);
+        assert!(c.tick(start + secs(600)).is_empty());
+        assert_eq!(c.next_wakeup(), None);
+    }
+
+    #[test]
+    fn resuming_reopens_right_away() {
+        let start = Instant::now();
+        let mut c = BridgeController::new([id()], default_retry_policy());
+        c.apply_snapshot(vec![phone(false)], start);
+        c.set_suspended(true, start);
+        assert!(c.set_suspended(false, start + secs(5)).is_empty());
+        assert_eq!(view(&c).state, BridgeState::Waiting);
+        assert_eq!(c.tick(start + secs(5)), vec![BridgeAction::Open(id())]);
+    }
+
+    #[test]
+    fn suspending_leaves_phones_that_are_off_alone() {
+        let start = Instant::now();
+        let mut c = BridgeController::new([], default_retry_policy());
+        c.apply_snapshot(vec![phone(false)], start);
+        assert!(c.set_suspended(true, start).is_empty());
+        assert_eq!(view(&c).state, BridgeState::Off);
+        // Enabling while suspended waits for the resume.
+        c.set_enabled(&id(), true, start);
+        assert_eq!(view(&c).state, BridgeState::Paused);
+        assert!(c.tick(start + secs(60)).is_empty());
+    }
+
+    #[test]
+    fn a_phone_seen_while_suspended_starts_paused() {
+        let start = Instant::now();
+        let mut c = BridgeController::new([id()], default_retry_policy());
+        c.set_suspended(true, start);
+        c.apply_snapshot(vec![phone(false)], start);
+        assert_eq!(view(&c).state, BridgeState::Paused);
+        assert_eq!(
+            c.set_suspended(true, start),
+            Vec::new(),
+            "no change, no actions"
+        );
     }
 
     #[test]

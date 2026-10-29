@@ -44,6 +44,6 @@ notification.
 ## Over Bluetooth (automatic fallback)
 
 Pair the phone with the laptop once in **Windows Settings → Bluetooth &
-devices → Add device**. From M4 on, BudsLink connects to the paired phone by
-itself whenever the phone is not casting, so you don't need to touch the
-phone.
+devices → Add device**. With *Phone connection* on Auto (the default),
+BudsLink connects to the paired phone by itself whenever the phone is not
+casting, so you don't need to touch the phone.

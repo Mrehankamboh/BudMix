@@ -1,10 +1,11 @@
 //! Commands invoked by the web UI.
 
 use budslink_core::{
-    AudioView, Command, DeviceId, DeviceView, Settings, SourceView, UnavailableSource,
+    AudioView, CastStatus, Command, DeviceId, DeviceView, Level, Settings, SourceView,
+    UnavailableSource, VolumeSource,
 };
 use budslink_win::checks::{CheckResult, Fix};
-use tauri::{AppHandle, State};
+use tauri::{AppHandle, Manager, State};
 
 use crate::state::{AppInfo, AppState};
 use crate::{diagnostics, setup, system};
@@ -69,10 +70,34 @@ pub async fn diagnostics(app: AppHandle, state: State<'_, AppState>) -> Result<S
     let sources = state.sources();
     let probe = app.clone();
     let system = tauri::async_runtime::spawn_blocking(move || {
-        format!("{}\n\n{}", setup::diagnostics(&probe), sources.diagnostics())
+        format!(
+            "{}\n\n{}",
+            setup::diagnostics(&probe),
+            sources.diagnostics()
+        )
     })
     .await
     .map_err(|err| err.to_string())?;
+    let cast = state.cast().status().map_or_else(
+        || "Phone over Wi-Fi: not running".to_owned(),
+        |status| {
+            format!(
+                "Phone over Wi-Fi: receiver {:?} · {:?} · phone {} · mode {:?} · Bluetooth held off: {}{}",
+                status.cast.receiver,
+                status.cast.phase,
+                status.cast.phone.as_deref().unwrap_or("none"),
+                status.mode,
+                status.bluetooth_suspended,
+                status
+                    .cast
+                    .message
+                    .as_deref()
+                    .map(|message| format!(" · {message}"))
+                    .unwrap_or_default()
+            )
+        },
+    );
+    let system = format!("{cast}\n{system}");
     let version = app.package_info().version.to_string();
     let header = diagnostics::Header {
         version: &version,
@@ -142,4 +167,47 @@ pub async fn run_fix(app: AppHandle, fix: Fix) -> Result<(), String> {
     tauri::async_runtime::spawn_blocking(move || setup::run_fix(&app, fix))
         .await
         .map_err(|err| err.to_string())?
+}
+
+/// Phone audio over Wi-Fi: receiver, casting phone, approvals.
+#[tauri::command]
+pub fn cast_state(state: State<'_, AppState>) -> Option<CastStatus> {
+    state.cast().status()
+}
+
+/// Lets the phone that waits for approval play; `remember` allows it for good.
+#[tauri::command]
+pub fn approve_phone(state: State<'_, AppState>, remember: bool) {
+    state.cast().approve(remember);
+}
+
+#[tauri::command]
+pub fn reject_phone(state: State<'_, AppState>) {
+    state.cast().reject();
+}
+
+/// Removes a phone from the cast allowlist; it will be asked about again.
+#[tauri::command]
+pub fn forget_phone(state: State<'_, AppState>, name: String) {
+    state.cast().forget(name);
+}
+
+/// Moves one volume slider (or mutes it) and remembers it.
+#[tauri::command]
+pub fn set_volume(app: AppHandle, source: VolumeSource, level: Level) -> Result<(), String> {
+    let state = app.state::<AppState>();
+    let mut settings = state.settings();
+    settings.volumes.set(source, level);
+    system::update_settings(&app, settings).map(|_| ())
+}
+
+/// Shows or hides the phone's picture; the audio plays either way.
+#[tauri::command]
+pub fn show_cast_video(app: AppHandle, visible: bool) -> Result<(), String> {
+    let state = app.state::<AppState>();
+    let settings = Settings {
+        show_cast_video: visible,
+        ..state.settings()
+    };
+    system::update_settings(&app, settings).map(|_| ())
 }

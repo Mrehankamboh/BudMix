@@ -14,6 +14,7 @@ const PHONE_STATE: Record<SourceView["state"], string> = {
   connecting: "Connecting",
   waiting: "Waiting",
   streaming: "Playing",
+  paused: "Paused",
 };
 
 const LAPTOP = { left: 126, right: 234, mid: 49 };

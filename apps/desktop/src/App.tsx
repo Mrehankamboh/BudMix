@@ -3,6 +3,10 @@ import { DiagnosticsPanel } from "./components/DiagnosticsPanel";
 import { PhoneAudioPanel } from "./components/PhoneAudioPanel";
 import { SettingsPanel } from "./components/SettingsPanel";
 import { SetupPanel } from "./components/SetupPanel";
+import { SourcesPanel } from "./components/SourcesPanel";
+import { ConnectPhoneGuide } from "./components/ConnectPhoneGuide";
+import { focusDevice } from "./lib/focus";
+import { sourceRows } from "./lib/sources";
 import { api } from "./lib/api";
 import { useBudsLink } from "./lib/useBudsLink";
 
@@ -19,7 +23,13 @@ export function App() {
     toggleDevice: toggle,
     togglePhone,
     makeHotkeyTarget,
+    audio,
+    cast,
+    rejectPhone,
+    forgetPhone,
+    setVolume,
   } = useBudsLink();
+  const device = focusDevice(devices ?? [], settings?.preferredDevice ?? null);
 
   return (
     <div className="app">
@@ -66,7 +76,20 @@ export function App() {
           )}
         </section>
 
+        {settings && (
+          <SourcesPanel
+            rows={sourceRows(device, audio, cast, phones ?? [])}
+            volumes={settings.volumes}
+            onVolume={setVolume}
+            onDisconnectCast={rejectPhone}
+            allowed={settings.allowedPhones}
+            onForget={forgetPhone}
+          />
+        )}
+
         <PhoneAudioPanel phones={phones} unavailable={unavailablePhones} onToggle={togglePhone} />
+
+        <ConnectPhoneGuide />
 
         {settings && (
           <SettingsPanel
