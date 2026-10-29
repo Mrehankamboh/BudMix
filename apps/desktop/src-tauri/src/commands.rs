@@ -3,10 +3,11 @@
 use budslink_core::{
     AudioView, Command, DeviceId, DeviceView, Settings, SourceView, UnavailableSource,
 };
+use budslink_win::checks::{CheckResult, Fix};
 use tauri::{AppHandle, State};
 
 use crate::state::{AppInfo, AppState};
-use crate::{diagnostics, system};
+use crate::{diagnostics, setup, system};
 
 #[tauri::command]
 pub fn app_info(app: AppHandle, state: State<'_, AppState>) -> AppInfo {
@@ -66,9 +67,12 @@ pub async fn list_unavailable_phones(
 #[tauri::command]
 pub async fn diagnostics(app: AppHandle, state: State<'_, AppState>) -> Result<String, String> {
     let sources = state.sources();
-    let system = tauri::async_runtime::spawn_blocking(move || sources.diagnostics())
-        .await
-        .map_err(|err| err.to_string())?;
+    let probe = app.clone();
+    let system = tauri::async_runtime::spawn_blocking(move || {
+        format!("{}\n\n{}", setup::diagnostics(&probe), sources.diagnostics())
+    })
+    .await
+    .map_err(|err| err.to_string())?;
     let version = app.package_info().version.to_string();
     let header = diagnostics::Header {
         version: &version,
@@ -122,4 +126,20 @@ pub fn dock_resize(app: AppHandle, height: f64) -> Result<(), String> {
 #[tauri::command]
 pub fn hide_dock(app: AppHandle) {
     crate::dock::hide(&app);
+}
+
+/// The setup check: every prerequisite with its status and fix.
+#[tauri::command]
+pub async fn setup_checks(app: AppHandle) -> Result<Vec<CheckResult>, String> {
+    tauri::async_runtime::spawn_blocking(move || setup::run_checks(&app))
+        .await
+        .map_err(|err| err.to_string())
+}
+
+/// Runs the fix behind a check's "Fix" button.
+#[tauri::command]
+pub async fn run_fix(app: AppHandle, fix: Fix) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || setup::run_fix(&app, fix))
+        .await
+        .map_err(|err| err.to_string())?
 }

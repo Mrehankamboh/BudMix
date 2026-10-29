@@ -54,3 +54,18 @@ cargo run -p budslink-win --example bt-audio -- list
 | M1-12 | Settings → turn off "Play laptop audio in my buds" | The previous default comes back | |
 | M1-13 | Quit from the tray menu | The previous default comes back | |
 | M1-14 | Demo mode: `$env:BUDSLINK_DEMO = "1"; pnpm tauri dev` | Fictional "Demo Buds Pro"; connecting them shows laptop audio "in your buds" | |
+
+## M2: setup check and diagnostics
+
+| ID | Check | Expected | Result |
+|---|---|---|---|
+| M2-1 | First start of the app | The settings window opens with "Welcome: let's check this PC" | |
+| M2-2 | Bluetooth row | "Bluetooth is on". Turn Bluetooth off and click **Check again**: "Bluetooth is off" with **Open settings** | |
+| M2-3 | Buds / phone rows | "Buds paired: TWS" and "Phone paired: Infinix HOT 11 Play" | |
+| M2-4 | Network row on the Public home Wi-Fi | "Network is Public" with **Make Private (admin)**. Click it, say Yes to Windows: the row turns "Network is Private" | |
+| M2-5 | Cancel the admin prompt instead | "The admin prompt was cancelled, so nothing changed." | |
+| M2-6 | Firewall row | **Allow (admin)** adds the rule; the row turns OK. `wf.msc` shows "BudsLink (Private networks)", Private profile only | |
+| M2-7 | Miracast row | "Wi-Fi card can receive Miracast" (Intel AC 8265) | |
+| M2-8 | Test beep row | **Play beep** is heard in the buds; **Yes** marks it OK | |
+| M2-9 | **Done** / **Finish later** | Next start opens the dock, not the wizard; the check stays available in settings | |
+| M2-10 | Troubleshooting → Copy diagnostics | The text includes Windows build, Bluetooth radio, networks with their category, firewall, Miracast sink, laptop audio and Bluetooth devices | |

@@ -8,6 +8,7 @@ mod dock;
 mod hotkey;
 mod instance;
 mod labels;
+mod setup;
 mod state;
 mod system;
 mod tray;
@@ -65,6 +66,8 @@ pub fn run() {
             commands::hide_dock,
             commands::audio_state,
             commands::play_test_tone,
+            commands::setup_checks,
+            commands::run_fix,
         ])
         .setup(|app| {
             setup(app.handle())?;
@@ -159,9 +162,14 @@ fn setup(app: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
     tray::create(app)?;
     create_main_window(app, mica)?;
     dock::create(app, mica)?;
-    // Everyday control lives in the dock; the full window is for settings.
+    // Everyday control lives in the dock; the full window is for settings
+    // and, until it is done once, the setup check.
     if !std::env::args().any(|arg| arg == MINIMIZED_ARG) {
-        dock::show(app);
+        if settings.setup_done {
+            dock::show(app);
+        } else {
+            show_main_window(app);
+        }
     }
     Ok(())
 }

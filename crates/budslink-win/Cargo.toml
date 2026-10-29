@@ -9,6 +9,8 @@ publish = false
 
 [dependencies]
 budslink-core.workspace = true
+serde.workspace = true
+serde_json.workspace = true
 log.workspace = true
 
 [lints]
@@ -19,6 +21,7 @@ windows-collections = "0.3"
 windows-core = "0.62"
 windows = { version = "0.62", features = [
     "Devices_Enumeration",
+    "Devices_Radios",
     "Foundation",
     "Foundation_Collections",
     "Media_Audio",

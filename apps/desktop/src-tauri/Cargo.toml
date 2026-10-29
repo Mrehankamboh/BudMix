@@ -19,6 +19,8 @@ tauri-build = { version = "2.7", features = [] }
 
 [dependencies]
 budslink-core = { workspace = true, features = ["fake"] }
+# Only its pure modules (setup checks) are used off Windows.
+budslink-win.workspace = true
 log.workspace = true
 serde.workspace = true
 serde_json.workspace = true
@@ -27,9 +29,6 @@ tauri-plugin-autostart = "2.7"
 tauri-plugin-global-shortcut = "2.4"
 tauri-plugin-log = "2.10"
 tauri-plugin-single-instance = "2.5"
-
-[target.'cfg(windows)'.dependencies]
-budslink-win.workspace = true
 
 [lints]
 workspace = true

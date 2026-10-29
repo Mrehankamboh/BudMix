@@ -1228,3 +1228,68 @@ button {
     display: none;
   }
 }
+
+/* setup check */
+
+.checks {
+  display: grid;
+  gap: 6px;
+  margin: 10px 0;
+  padding: 0;
+  list-style: none;
+}
+
+.check {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--fill-2);
+}
+
+.check__icon {
+  display: flex;
+  flex: none;
+  color: var(--text-2);
+}
+
+.check--ok .check__icon {
+  color: var(--accent);
+}
+
+.check--warning .check__icon {
+  color: var(--busy);
+}
+
+.check--problem .check__icon {
+  color: var(--alert);
+}
+
+.check__text {
+  display: grid;
+  flex: 1;
+  min-width: 0;
+  gap: 2px;
+}
+
+.check__text small {
+  color: var(--text-2);
+}
+
+.check__actions {
+  display: flex;
+  flex: none;
+  gap: 4px;
+}
+
+.check .pill:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.setup__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}

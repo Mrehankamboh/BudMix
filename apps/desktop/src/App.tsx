@@ -2,6 +2,8 @@ import { DeviceCard } from "./components/DeviceCard";
 import { DiagnosticsPanel } from "./components/DiagnosticsPanel";
 import { PhoneAudioPanel } from "./components/PhoneAudioPanel";
 import { SettingsPanel } from "./components/SettingsPanel";
+import { SetupPanel } from "./components/SetupPanel";
+import { api } from "./lib/api";
 import { useBudsLink } from "./lib/useBudsLink";
 
 /** The full window: every device, every phone and all settings. */
@@ -27,6 +29,14 @@ export function App() {
       </header>
 
       <main className="app__main">
+        {settings && (
+          <SetupPanel
+            done={settings.setupDone}
+            onDone={() => void saveSettings({ ...settings, setupDone: true })}
+            onPlayTone={() => api.playTestTone()}
+          />
+        )}
+
         <section className="panel" aria-labelledby="devices-title">
           <h2 id="devices-title">Bluetooth audio</h2>
           {error && (

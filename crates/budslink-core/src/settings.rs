@@ -40,6 +40,8 @@ pub struct Settings {
     /// The default output before BudsLink switched to the buds, restored
     /// later (kept here so it survives a crash or restart).
     pub saved_output: Option<String>,
+    /// The first-run setup check was finished (or skipped) once.
+    pub setup_done: bool,
 }
 
 impl Default for Settings {
@@ -55,6 +57,7 @@ impl Default for Settings {
             bridged_phones: Vec::new(),
             route_laptop_audio: true,
             saved_output: None,
+            setup_done: false,
         }
     }
 }

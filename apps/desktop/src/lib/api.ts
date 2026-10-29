@@ -4,7 +4,9 @@ import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import type {
   AppInfo,
   AudioView,
+  CheckResult,
   DeviceView,
+  Fix,
   Settings,
   SourceView,
   UnavailablePhone,
@@ -39,6 +41,10 @@ export const api = {
     listen<AudioView>(AUDIO_CHANGED, (event) => handler(event.payload)),
   /** Plays the test beep into the buds; resolves once it has played. */
   playTestTone: () => invoke<void>("play_test_tone"),
+  /** Every prerequisite with its status and fix (takes a second or two). */
+  setupChecks: () => invoke<CheckResult[]>("setup_checks"),
+  /** Runs the fix behind a check's button; admin fixes show one Windows prompt. */
+  runFix: (fix: Fix) => invoke<void>("run_fix", { fix }),
   /** What BudsLink and Windows see, as text for a bug report. */
   diagnostics: () => invoke<string>("diagnostics"),
   /** Opens the full window (settings) and closes the dock. */

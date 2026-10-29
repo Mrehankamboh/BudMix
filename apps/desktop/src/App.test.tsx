@@ -24,6 +24,8 @@ vi.mock("./lib/api", () => ({
     audioState: vi.fn(),
     onAudioChanged: vi.fn(),
     playTestTone: vi.fn(),
+    setupChecks: vi.fn(),
+    runFix: vi.fn(),
   },
 }));
 
@@ -40,6 +42,7 @@ const settings: Settings = {
   bridgedPhones: [],
   routeLaptopAudio: true,
   savedOutput: null,
+  setupDone: true,
 };
 
 const audio: AudioView = {
@@ -82,6 +85,8 @@ beforeEach(() => {
   mocked.audioState.mockResolvedValue(audio);
   mocked.onAudioChanged.mockResolvedValue(() => {});
   mocked.playTestTone.mockResolvedValue(undefined);
+  mocked.setupChecks.mockResolvedValue([]);
+  mocked.runFix.mockResolvedValue(undefined);
   mocked.appInfo.mockResolvedValue(info);
   mocked.getSettings.mockResolvedValue(settings);
   mocked.listDevices.mockResolvedValue([buds]);

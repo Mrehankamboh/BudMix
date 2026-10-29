@@ -13,10 +13,13 @@
 //! * Laptop audio in the buds ([`WindowsAudioBackend`]): makes the buds the
 //!   default output, checks for call mode (hands-free) and plays the test
 //!   tone.
+//! * Setup checks ([`checks`], `setup`): Bluetooth, network profile, firewall,
+//!   Miracast support, and the one-time admin fixes.
 //!
-//! Only [`classify`] and [`paired`] are compiled on other platforms, so their
+//! Only [`checks`], [`classify`] and [`paired`] are compiled on other platforms, so their
 //! logic is tested everywhere.
 
+pub mod checks;
 pub mod classify;
 pub mod paired;
 
@@ -40,6 +43,8 @@ mod os;
 mod phone;
 #[cfg(windows)]
 mod policy;
+#[cfg(windows)]
+pub mod setup;
 #[cfg(windows)]
 mod tone;
 

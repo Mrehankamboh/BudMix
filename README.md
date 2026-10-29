@@ -2,7 +2,7 @@
 
 **Hear your laptop and your phone in the same Bluetooth earbuds at the same time, even buds without multipoint. Nothing to install on the phone.**
 
-> **Status: early development (milestones M0 and M1 written, not yet built).** The repository holds
+> **Status: early development (milestones M0 to M2 written, not yet built).** The repository holds
 > the shared core (from BudsBridge), the tray app with laptop audio in the buds, and a probe
 > that checks whether this laptop can receive a phone's Miracast cast.
 
@@ -33,7 +33,7 @@
 |---|---|---|
 | M0 | Miracast receiver probe (`cast-probe`) | code written, awaiting first build and hardware test |
 | M1 | Tray app: buds auto-connect/reconnect, laptop audio in buds, test tone, call-mode warning, demo mode | code written; UI tests pass; Rust not built yet |
-| M2 | Setup wizard and diagnostics | planned |
+| M2 | Setup check: Bluetooth, pairing, Private network, firewall, Miracast support, test beep; one-click fixes; diagnostics | code written; UI tests pass; Rust not built yet |
 | M3 | Miracast receiver inside the app, video window, approvals | planned |
 | M4 | Bluetooth phone fallback, Auto Wi-Fi/Bluetooth switching, per-source volume | planned |
 | M5 | Reliability polish, installer, docs | planned |

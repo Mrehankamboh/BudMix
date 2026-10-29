@@ -54,6 +54,35 @@ export interface Settings {
   routeLaptopAudio: boolean;
   /** The output to give back later; owned by the app, not the UI. */
   savedOutput: string | null;
+  /** The first-run setup check was finished or skipped once. */
+  setupDone: boolean;
+}
+
+export type CheckId =
+  | "bluetooth"
+  | "budsPaired"
+  | "phonePaired"
+  | "networkPrivate"
+  | "firewall"
+  | "miracast"
+  | "wirelessDisplay";
+
+export type CheckStatus = "ok" | "warning" | "problem" | "optional" | "unknown";
+
+/** What a check's "Fix" button does. Admin fixes show one Windows prompt. */
+export type Fix =
+  | { kind: "openSettings"; uri: string }
+  | { kind: "makeNetworkPrivate"; network: string }
+  | { kind: "addFirewallRule" }
+  | { kind: "installWirelessDisplay" };
+
+/** One prerequisite of the setup check. */
+export interface CheckResult {
+  id: CheckId;
+  status: CheckStatus;
+  title: string;
+  detail: string;
+  fix: Fix | null;
 }
 
 /** A playback device as Windows names it. */
