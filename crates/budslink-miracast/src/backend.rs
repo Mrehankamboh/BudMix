@@ -40,6 +40,7 @@ impl CastBackend for MiracastBackend {
 
     fn start(&self, events: CastEvents) -> StartOutcome {
         let listener = move |event: ReceiverEvent| {
+            log::info!("Miracast receiver: {event:?}");
             let event = match event {
                 ReceiverEvent::PhoneConnected { name, pin } => {
                     CastEvent::PhoneConnected { name, pin }

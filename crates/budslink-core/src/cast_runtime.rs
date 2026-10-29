@@ -185,6 +185,7 @@ impl CastRuntime {
                     on_update,
                     on_allowed,
                     last_network_check: now,
+                    private: None,
                 };
                 worker.backend.set_volume(config.volume);
                 worker.run(tx, rx);
@@ -220,6 +221,8 @@ struct Worker {
     on_update: CastListener,
     on_allowed: Box<dyn Fn(Vec<String>) + Send>,
     last_network_check: Instant,
+    /// Last network answer, to log only changes.
+    private: Option<bool>,
 }
 
 impl Worker {
@@ -296,6 +299,10 @@ impl Worker {
     fn check_network(&mut self, events: &CastEvents) {
         self.last_network_check = Instant::now();
         let private = self.backend.network_private().unwrap_or(false);
+        if self.private != Some(private) {
+            log::info!("trusted (Private) network: {private}");
+            self.private = Some(private);
+        }
         let actions = self.controller.set_private(private, Instant::now());
         self.execute(actions, events);
     }

@@ -1,5 +1,5 @@
-//! Is the connected network Private? The receiver only runs on networks the
-//! user trusts (Private or a work domain), never on Public Wi-Fi.
+//! Is the laptop on a network the user trusts? The receiver only runs while
+//! it is (Private or a work domain), never on Public Wi-Fi alone.
 
 use windows::Win32::Networking::NetworkListManager::{
     INetwork, INetworkListManager, NLM_ENUM_NETWORK_CONNECTED, NLM_NETWORK_CATEGORY_PUBLIC,
@@ -9,9 +9,10 @@ use windows::Win32::System::Com::{
     CLSCTX_ALL, COINIT_MULTITHREADED, CoCreateInstance, CoInitializeEx,
 };
 
-/// `Some(true)` when every connected network is Private or Domain,
-/// `Some(false)` when one is Public, `None` when nothing is connected or
-/// Windows can't tell.
+use crate::probe::trusted_network;
+
+/// See [`trusted_network`]: `Some(true)` on a Private or Domain network,
+/// `Some(false)` on Public networks only, `None` when nothing is connected.
 pub fn connected_networks_private() -> Option<bool> {
     // SAFETY: COM initialisation for this thread, then plain COM calls.
     unsafe {
@@ -19,7 +20,7 @@ pub fn connected_networks_private() -> Option<bool> {
         let manager: INetworkListManager =
             CoCreateInstance(&NetworkListManager, None, CLSCTX_ALL).ok()?;
         let networks = manager.GetNetworks(NLM_ENUM_NETWORK_CONNECTED).ok()?;
-        let mut seen = false;
+        let mut private = Vec::new();
         loop {
             let mut batch: [Option<INetwork>; 1] = [None];
             let mut fetched = 0u32;
@@ -29,11 +30,10 @@ pub fn connected_networks_private() -> Option<bool> {
             let Some(network) = batch[0].take() else {
                 break;
             };
-            seen = true;
-            if network.GetCategory().ok()? == NLM_NETWORK_CATEGORY_PUBLIC {
-                return Some(false);
+            if let Ok(category) = network.GetCategory() {
+                private.push(category != NLM_NETWORK_CATEGORY_PUBLIC);
             }
         }
-        seen.then_some(true)
+        trusted_network(&private)
     }
 }
