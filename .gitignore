@@ -19,3 +19,6 @@ Thumbs.db
 
 # Claude Code local settings
 .claude/
+
+# Vercel CLI link
+.vercel
