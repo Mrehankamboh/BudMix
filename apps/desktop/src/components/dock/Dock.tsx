@@ -288,7 +288,7 @@ export function Dock() {
           <span className="laptop-audio__text">{laptopAudioLabel(audio)}</span>
           <button
             type="button"
-            className="pill"
+            className="link-button"
             disabled={tone === "playing"}
             onClick={() => void playTestTone()}
           >

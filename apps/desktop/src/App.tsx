@@ -1,16 +1,17 @@
+import { BudsHero } from "./components/BudsHero";
+import { ConnectPhoneGuide } from "./components/ConnectPhoneGuide";
 import { DeviceCard } from "./components/DeviceCard";
 import { DiagnosticsPanel } from "./components/DiagnosticsPanel";
 import { PhoneAudioPanel } from "./components/PhoneAudioPanel";
 import { SettingsPanel } from "./components/SettingsPanel";
 import { SetupPanel } from "./components/SetupPanel";
 import { SourcesPanel } from "./components/SourcesPanel";
-import { ConnectPhoneGuide } from "./components/ConnectPhoneGuide";
+import { api } from "./lib/api";
 import { focusDevice } from "./lib/focus";
 import { sourceRows } from "./lib/sources";
-import { api } from "./lib/api";
 import { useBudsLink } from "./lib/useBudsLink";
 
-/** The full window: every device, every phone and all settings. */
+/** The full window: the buds, every source and phone, and all settings. */
 export function App() {
   const {
     devices,
@@ -25,18 +26,25 @@ export function App() {
     makeHotkeyTarget,
     audio,
     cast,
+    tone,
+    playTestTone,
     rejectPhone,
     forgetPhone,
     setVolume,
   } = useBudsLink();
   const device = focusDevice(devices ?? [], settings?.preferredDevice ?? null);
+  const rows = sourceRows(device, audio, cast, phones ?? []);
 
   return (
     <div className="app">
-      <header className="app__header">
-        <h1>BudsLink</h1>
-        {info?.backend === "demo" && <span className="badge">Demo mode: simulated devices</span>}
-      </header>
+      <BudsHero
+        device={device}
+        audio={audio}
+        rows={rows}
+        demo={info?.backend === "demo"}
+        tone={tone}
+        onTestBeep={() => void playTestTone()}
+      />
 
       <main className="app__main">
         {settings && (
@@ -47,8 +55,24 @@ export function App() {
           />
         )}
 
-        <section className="panel" aria-labelledby="devices-title">
-          <h2 id="devices-title">Bluetooth audio</h2>
+        {settings && (
+          <SourcesPanel
+            rows={rows}
+            volumes={settings.volumes}
+            onVolume={setVolume}
+            onDisconnectCast={rejectPhone}
+            allowed={settings.allowedPhones}
+            onForget={forgetPhone}
+          />
+        )}
+
+        <section className="section" aria-labelledby="devices-title">
+          <header className="section__head">
+            <div>
+              <h2 id="devices-title">Bluetooth audio</h2>
+              <p className="section__lead">Buds and headphones paired with this laptop.</p>
+            </div>
+          </header>
           {error && (
             <p className="banner banner--error" role="alert">
               {error}
@@ -62,12 +86,12 @@ export function App() {
               devices, then they show up here.
             </p>
           ) : (
-            <ul className="devices">
-              {devices.map((device) => (
+            <ul className="rows-list">
+              {devices.map((item) => (
                 <DeviceCard
-                  key={device.id}
-                  device={device}
-                  isHotkeyTarget={settings?.preferredDevice === device.id}
+                  key={item.id}
+                  device={item}
+                  isHotkeyTarget={settings?.preferredDevice === item.id}
                   onToggle={toggle}
                   onMakeHotkeyTarget={makeHotkeyTarget}
                 />
@@ -75,17 +99,6 @@ export function App() {
             </ul>
           )}
         </section>
-
-        {settings && (
-          <SourcesPanel
-            rows={sourceRows(device, audio, cast, phones ?? [])}
-            volumes={settings.volumes}
-            onVolume={setVolume}
-            onDisconnectCast={rejectPhone}
-            allowed={settings.allowedPhones}
-            onForget={forgetPhone}
-          />
-        )}
 
         <PhoneAudioPanel phones={phones} unavailable={unavailablePhones} onToggle={togglePhone} />
 
@@ -102,7 +115,7 @@ export function App() {
         <DiagnosticsPanel />
       </main>
 
-      <footer className="app__footer muted">v{info?.version ?? "…"}</footer>
+      <footer className="app__footer muted">BudsLink v{info?.version ?? "…"} · based on BudsBridge</footer>
     </div>
   );
 }

@@ -26,15 +26,19 @@ export function DiagnosticsPanel() {
   };
 
   return (
-    <section className="panel" aria-labelledby="diagnostics-title">
-      <h2 id="diagnostics-title">Troubleshooting</h2>
-      <p className="muted small">
-        A phone missing or not connecting? Copy what BudsLink and Windows see about your Bluetooth
-        devices and send it with your report. It includes device names and Bluetooth addresses.
-      </p>
-      <button type="button" className="button" onClick={() => void copy()}>
-        Copy diagnostics
-      </button>
+    <section className="section" aria-labelledby="diagnostics-title">
+      <div className="inline-action">
+        <div>
+          <h2 id="diagnostics-title">Troubleshooting</h2>
+          <p className="section__lead">
+            Something not connecting? Copy what BudsLink and Windows see and send it with your report.
+            It includes device names and Bluetooth addresses.
+          </p>
+        </div>
+        <button type="button" className="button button--ghost" onClick={() => void copy()}>
+          Copy diagnostics
+        </button>
+      </div>
       {status && (
         <p className="muted small" role="status">
           {status}

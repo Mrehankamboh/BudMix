@@ -8,8 +8,8 @@ interface PhoneAudioPanelProps {
   onToggle: (phone: SourceView, enabled: boolean) => void;
 }
 
-// Reuses the device card look: green when playing, amber while working on it.
-const CARD_STATE: Record<BridgeState, string> = {
+// Reuses the device row look: green when playing, amber while working on it.
+const ROW_STATE: Record<BridgeState, string> = {
   off: "disconnected",
   connecting: "connecting",
   waiting: "connecting",
@@ -19,16 +19,16 @@ const CARD_STATE: Record<BridgeState, string> = {
 
 export function PhoneAudioPanel({ phones, unavailable = [], onToggle }: PhoneAudioPanelProps) {
   return (
-    <section className="panel" aria-labelledby="phone-title">
-      <h2 id="phone-title">Phone audio</h2>
-      <p className="muted">
-        Hear your phone through the laptop. The buds stay connected to the laptop and play both, so
-        there is nothing to switch.
-      </p>
-      <p className="muted small">
-        Windows shows a paired phone as “Not connected” until you switch it on here. BudsLink then
-        connects it and keeps it connected.
-      </p>
+    <section className="section" aria-labelledby="phone-title">
+      <header className="section__head">
+        <div>
+          <h2 id="phone-title">Phone over Bluetooth</h2>
+          <p className="section__lead">
+            The laptop acts as a speaker for your phone, so its sound reaches the buds without
+            switching. Nothing to tap on the phone.
+          </p>
+        </div>
+      </header>
 
       {phones === null ? (
         <p className="muted">Looking for paired phones…</p>
@@ -38,35 +38,32 @@ export function PhoneAudioPanel({ phones, unavailable = [], onToggle }: PhoneAud
           devices → Add device, and it shows up here.
         </p>
       ) : (
-        <ul className="devices">
+        <ul className="rows-list">
           {phones.map((phone) => (
             <li
               key={phone.id}
-              className={`device device--${CARD_STATE[phone.state]}`}
+              className={`device device--${ROW_STATE[phone.state]}`}
               aria-label={phone.name}
               aria-busy={phone.state === "connecting"}
             >
-              <div className="device__main">
-                <span className="device__dot" aria-hidden="true" />
-                <div className="device__text">
-                  <p className="device__name">{phone.name}</p>
-                  <p className="device__status">{bridgeStatusLabel(phone.state)}</p>
-                </div>
+              <span className="device__dot" aria-hidden="true" />
+              <div className="device__text">
+                <p className="device__name">{phone.name}</p>
+                <p className="device__status">{bridgeStatusLabel(phone.state)}</p>
+                {phone.lastError && (
+                  <p className="device__error" role="alert">
+                    {phone.lastError}
+                  </p>
+                )}
               </div>
-              {phone.lastError && (
-                <p className="device__error" role="alert">
-                  {phone.lastError}
-                </p>
-              )}
-              <label className="switch">
-                <input
-                  type="checkbox"
-                  role="switch"
-                  checked={phone.enabled}
-                  onChange={(event) => onToggle(phone, event.target.checked)}
-                />
-                <span>Hear {phone.name} in my buds</span>
-              </label>
+              <input
+                type="checkbox"
+                role="switch"
+                className="toggle"
+                aria-label={`Hear ${phone.name} in my buds`}
+                checked={phone.enabled}
+                onChange={(event) => onToggle(phone, event.target.checked)}
+              />
             </li>
           ))}
           {unavailable.map((phone) => (
@@ -75,12 +72,10 @@ export function PhoneAudioPanel({ phones, unavailable = [], onToggle }: PhoneAud
               className="device device--unavailable"
               aria-label={phone.name}
             >
-              <div className="device__main">
-                <span className="device__dot" aria-hidden="true" />
-                <div className="device__text">
-                  <p className="device__name">{phone.name}</p>
-                  <p className="device__status">{unavailableLabel(phone.reason)}</p>
-                </div>
+              <span className="device__dot" aria-hidden="true" />
+              <div className="device__text">
+                <p className="device__name">{phone.name}</p>
+                <p className="device__status">{unavailableLabel(phone.reason)}</p>
               </div>
             </li>
           ))}
@@ -88,8 +83,9 @@ export function PhoneAudioPanel({ phones, unavailable = [], onToggle }: PhoneAud
       )}
       {unavailable.length > 0 && <p className="muted small">{UNAVAILABLE_HINT}</p>}
 
-      <p className="muted small">
-        Phone calls: Windows Phone Link can take your calls on the laptop, so they reach the buds
+      <p className="footnote">
+        Windows shows a paired phone as “Not connected” until you switch it on here. BudsLink then
+        connects it and keeps it connected. For calls, Windows Phone Link brings them to the buds
         too.
       </p>
     </section>

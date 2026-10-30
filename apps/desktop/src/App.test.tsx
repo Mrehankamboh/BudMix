@@ -140,9 +140,9 @@ beforeEach(() => {
 describe("App", () => {
   it("lists devices and flags demo mode", async () => {
     render(<App />);
-    expect(await screen.findByText("Test Buds")).toBeInTheDocument();
+    expect(await screen.findByRole("listitem", { name: "Test Buds" })).toBeInTheDocument();
     expect(screen.getByText("Demo mode: simulated devices")).toBeInTheDocument();
-    expect(await screen.findByText("v0.1.0")).toBeInTheDocument();
+    expect(await screen.findByText(/BudsLink v0.1.0/)).toBeInTheDocument();
   });
 
   it("connects a disconnected device", async () => {
@@ -153,7 +153,7 @@ describe("App", () => {
 
   it("follows live updates from the runtime", async () => {
     render(<App />);
-    await screen.findByText("Not connected");
+    await screen.findByRole("listitem", { name: "Test Buds" });
     act(() => pushDevices([{ ...buds, state: "connected" }]));
     const card = screen.getByRole("listitem", { name: "Test Buds" });
     expect(within(card).getByText("Connected")).toBeInTheDocument();

@@ -96,15 +96,34 @@ export function SetupPanel({ done, onDone, onPlayTone }: SetupPanelProps) {
   };
 
   const problems = checks?.filter((check) => check.status === "problem").length ?? 0;
+  // The beep counts as one more item once answered.
+  const total = (checks?.length ?? 0) + 1;
+  const ready =
+    (checks?.filter((check) => check.status === "ok" || check.status === "optional").length ?? 0) +
+    (beep === "heard" ? 1 : 0);
 
   return (
-    <section className="panel setup" aria-labelledby="setup-title">
-      <h2 id="setup-title">{done ? "Setup check" : "Welcome: let's check this PC"}</h2>
-      {!done && (
-        <p className="muted">
-          BudsLink checks what it needs and fixes it for you. Buttons marked "(admin)" show one
-          Windows prompt.
-        </p>
+    <section className="section setup" aria-labelledby="setup-title">
+      <header className="section__head">
+        <div>
+          <h2 id="setup-title">{done ? "Setup check" : "Welcome: let's check this PC"}</h2>
+          <p className="section__lead">
+            {done
+              ? "Everything BudsLink needs from Windows, at a glance."
+              : 'BudsLink checks what it needs and fixes it for you. Buttons marked "(admin)" show one Windows prompt.'}
+          </p>
+        </div>
+        {checks !== null && (
+          <p className="setup__score" aria-label={`${ready} of ${total} ready`}>
+            <strong>{ready}</strong>
+            <span>/{total} ready</span>
+          </p>
+        )}
+      </header>
+      {checks !== null && (
+        <div className="progress" aria-hidden="true">
+          <span style={{ width: `${Math.round((ready / total) * 100)}%` }} />
+        </div>
       )}
       {message && (
         <p className="banner banner--error" role="alert">
@@ -128,7 +147,7 @@ export function SetupPanel({ done, onDone, onPlayTone }: SetupPanelProps) {
               {check.fix && (
                 <button
                   type="button"
-                  className="pill"
+                  className="link-button"
                   disabled={running !== null}
                   onClick={() => void fix(check)}
                 >
@@ -156,16 +175,16 @@ export function SetupPanel({ done, onDone, onPlayTone }: SetupPanelProps) {
               <span className="check__actions">
                 <button
                   type="button"
-                  className="pill"
+                  className="link-button"
                   disabled={beep === "playing"}
                   onClick={() => void playBeep()}
                 >
                   {beep === "playing" ? "Playing…" : "Play beep"}
                 </button>
-                <button type="button" className="pill" onClick={() => setBeep("heard")}>
+                <button type="button" className="link-button" onClick={() => setBeep("heard")}>
                   Yes
                 </button>
-                <button type="button" className="pill" onClick={() => setBeep("silent")}>
+                <button type="button" className="link-button" onClick={() => setBeep("silent")}>
                   No
                 </button>
               </span>

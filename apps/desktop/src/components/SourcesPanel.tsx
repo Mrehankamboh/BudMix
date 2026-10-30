@@ -1,4 +1,4 @@
-import { Volume2, VolumeX } from "lucide-react";
+import { Bluetooth, Headphones, Laptop, Volume2, VolumeX, Wifi } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import { STATUS_LABEL, type SourceRow } from "../lib/sources";
@@ -77,55 +77,74 @@ export function SourcesPanel({
   compact = false,
 }: SourcesPanelProps) {
   const list = (
-    <ul className="sources">
-      {rows.map((row) => (
-        <li key={row.source} className={`source source--${row.status}`} aria-label={row.title}>
-          <span className="source__head">
-            <span className="row__dot" aria-hidden="true" />
+    <ul className={`sources${compact ? " sources--compact" : ""}`}>
+      {rows.map((row) => {
+        const Icon = SOURCE_ICON[row.source];
+        return (
+          <li key={row.source} className={`source source--${row.status}`} aria-label={row.title}>
+            <span className="source__icon" aria-hidden="true">
+              <Icon size={16} />
+            </span>
             <span className="source__text">
               <span className="source__title">{row.title}</span>
               <small>
-                {STATUS_LABEL[row.status]}
+                <span className="source__status">{STATUS_LABEL[row.status]}</span>
                 {row.detail ? ` · ${row.detail}` : ""}
               </small>
             </span>
-            {row.source === "phoneWifi" && onDisconnectCast && (row.status === "playing" || row.status === "connecting") && (
-              <button type="button" className="pill" onClick={onDisconnectCast}>
-                Disconnect
-              </button>
-            )}
-          </span>
-          <VolumeControl
-            label={row.source === "master" ? "Buds" : row.title}
-            level={volumes[row.source]}
-            onChange={(level) => onVolume(row.source, level)}
-          />
-        </li>
-      ))}
+            {row.source === "phoneWifi" &&
+              onDisconnectCast &&
+              (row.status === "playing" || row.status === "connecting") && (
+                <button type="button" className="link-button" onClick={onDisconnectCast}>
+                  Disconnect
+                </button>
+              )}
+            <VolumeControl
+              label={row.source === "master" ? "Buds" : row.title}
+              level={volumes[row.source]}
+              onChange={(level) => onVolume(row.source, level)}
+            />
+          </li>
+        );
+      })}
     </ul>
   );
 
   if (compact) return list;
 
   return (
-    <section className="panel" aria-labelledby="sources-title">
-      <h2 id="sources-title">Sources in your buds</h2>
+    <section className="section" aria-labelledby="sources-title">
+      <header className="section__head">
+        <div>
+          <h2 id="sources-title">Sources in your buds</h2>
+          <p className="section__lead">Everything that plays in your buds, each with its own volume.</p>
+        </div>
+      </header>
       {list}
-      <h3 className="subhead">Phones allowed to cast</h3>
-      {allowed.length === 0 ? (
-        <p className="muted">None yet. A new phone is asked about the first time it casts.</p>
-      ) : (
-        <ul className="allowed">
-          {allowed.map((name) => (
-            <li key={name} aria-label={name}>
-              <span>{name}</span>
-              <button type="button" className="pill" onClick={() => onForget(name)}>
-                Forget
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
+      <div className="allowed-block">
+        <h3 className="subhead">Phones allowed to cast</h3>
+        {allowed.length === 0 ? (
+          <p className="muted small">None yet. A new phone is asked about the first time it casts.</p>
+        ) : (
+          <ul className="chips">
+            {allowed.map((name) => (
+              <li key={name} className="chip chip--removable" aria-label={name}>
+                <span>{name}</span>
+                <button type="button" className="chip__action" onClick={() => onForget(name)}>
+                  Forget
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
     </section>
   );
 }
+
+const SOURCE_ICON: Record<VolumeSource, typeof Headphones> = {
+  master: Headphones,
+  laptop: Laptop,
+  phoneWifi: Wifi,
+  phoneBluetooth: Bluetooth,
+};

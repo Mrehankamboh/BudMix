@@ -47,7 +47,7 @@ export function CastBanner({ cast, onApprove, onReject, onShowVideo }: CastBanne
         <MonitorSmartphone size={14} aria-hidden="true" />
         {cast.phase === "playing" ? `${phone} is casting over Wi-Fi` : `${phone} is connecting…`}
       </p>
-      <button type="button" className="pill" onClick={() => onShowVideo(!cast.videoVisible)}>
+      <button type="button" className="link-button" onClick={() => onShowVideo(!cast.videoVisible)}>
         {cast.videoVisible ? "Hide phone screen" : "Show phone screen"}
       </button>
     </section>
