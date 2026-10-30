@@ -115,7 +115,7 @@ Start the app (`pnpm tauri dev` in `apps/desktop`, or the installed BudsLink). T
 
 | Field | Value |
 |---|---|
-| Laptop / Wi-Fi card | Lenovo, Intel Dual Band Wireless-AC 8265 (Miracast Sink: Supported) |
+| Laptop / Wi-Fi card | Intel Dual Band Wireless-AC 8265 (Miracast Sink: Supported) |
 | Windows build | 26300 |
 | Buds | TWS |
 | Phone | Infinix Hot 11 Play, Android 11, XOS |

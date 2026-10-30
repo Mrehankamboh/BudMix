@@ -424,7 +424,7 @@ mod tests {
     #[test]
     fn parses_the_powershell_report() {
         let report = parse_powershell_report(
-            r#"{"Networks":[{"Name":"Ali Hamza","InterfaceAlias":"Wi-Fi","Category":"Public"}],"FirewallPrivate":"True","RuleCount":0}"#,
+            r#"{"Networks":[{"Name":"Home Wi-Fi","InterfaceAlias":"Wi-Fi","Category":"Public"}],"FirewallPrivate":"True","RuleCount":0}"#,
         );
         assert_eq!(report.networks.len(), 1);
         assert_eq!(report.firewall_private, Some(true));
@@ -452,12 +452,12 @@ mod tests {
     fn invocation_quotes_every_argument() {
         let text = fix_invocation(
             &[FixTask::Network, FixTask::Firewall],
-            "Ali's Wi-Fi",
-            r"C:\Users\Lenovo\AppData\Local\BudsLink\budslink.exe",
+            "Sam's Wi-Fi",
+            r"C:\Users\me\AppData\Local\BudsLink\budslink.exe",
         );
         assert!(text.starts_with("& {\n<#"));
         assert!(text.ends_with(
-            r"} -Tasks 'network,firewall' -Network 'Ali''s Wi-Fi' -Program 'C:\Users\Lenovo\AppData\Local\BudsLink\budslink.exe'"
+            r"} -Tasks 'network,firewall' -Network 'Sam''s Wi-Fi' -Program 'C:\Users\me\AppData\Local\BudsLink\budslink.exe'"
         ));
     }
 
@@ -493,7 +493,7 @@ Wireless Device Capabilities
 
     #[test]
     fn parses_one_or_many_network_profiles() {
-        let one = r#"{ "Name": "Ali Hamza", "InterfaceAlias": "Wi-Fi", "Category": "Public" }"#;
+        let one = r#"{ "Name": "Home Wi-Fi", "InterfaceAlias": "Wi-Fi", "Category": "Public" }"#;
         assert_eq!(parse_network_profiles(one).len(), 1);
         let many = r#"[
             { "Name": "Office", "InterfaceAlias": "Ethernet", "Category": "DomainAuthenticated" },
@@ -507,14 +507,14 @@ Wireless Device Capabilities
     #[test]
     fn public_wifi_offers_to_make_it_private() {
         let profiles = parse_network_profiles(
-            r#"{ "Name": "Ali Hamza", "InterfaceAlias": "Wi-Fi", "Category": "Public" }"#,
+            r#"{ "Name": "Home Wi-Fi", "InterfaceAlias": "Wi-Fi", "Category": "Public" }"#,
         );
         let check = network_check(&profiles);
         assert_eq!(check.status, CheckStatus::Problem);
         assert_eq!(
             check.fix,
             Some(Fix::MakeNetworkPrivate {
-                network: "Ali Hamza".into()
+                network: "Home Wi-Fi".into()
             })
         );
     }

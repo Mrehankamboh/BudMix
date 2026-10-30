@@ -19,8 +19,8 @@ const publicNetwork: CheckResult = {
   id: "networkPrivate",
   status: "problem",
   title: "Network is Public",
-  detail: '"Ali Hamza" is set to Public.',
-  fix: { kind: "makeNetworkPrivate", network: "Ali Hamza" },
+  detail: '"Home Wi-Fi" is set to Public.',
+  fix: { kind: "makeNetworkPrivate", network: "Home Wi-Fi" },
 };
 
 const miracast: CheckResult = {
@@ -55,7 +55,7 @@ describe("SetupPanel", () => {
   it("runs an admin fix and checks again", async () => {
     renderPanel();
     await userEvent.click(await screen.findByRole("button", { name: "Make Private (admin)" }));
-    expect(mocked.runFix).toHaveBeenCalledWith({ kind: "makeNetworkPrivate", network: "Ali Hamza" });
+    expect(mocked.runFix).toHaveBeenCalledWith({ kind: "makeNetworkPrivate", network: "Home Wi-Fi" });
     expect(mocked.setupChecks).toHaveBeenCalledTimes(2);
   });
 
