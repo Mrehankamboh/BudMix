@@ -1,17 +1,4 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
-  <!-- BudMix app icon: two sounds merge into one earbud. -->
-  <defs>
-    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#5b4bf0"/>
-      <stop offset="1" stop-color="#10b5a4"/>
-    </linearGradient>
-  </defs>
-  <rect x="48" y="48" width="928" height="928" rx="216" fill="url(#bg)"/>
-  <g fill="none" stroke="#ffffff" stroke-linecap="round">
-    <path d="M170 310 C 320 310, 340 500, 520 500" stroke-width="72"/>
-    <path d="M170 690 C 320 690, 340 500, 520 500" stroke-width="72" opacity=".7"/>
-  </g>
-  <ellipse cx="808" cy="438" rx="66" ry="74" fill="#ffffff" opacity=".72"/>
-  <path d="M664 590 L 700 800" fill="none" stroke="#ffffff" stroke-width="104" stroke-linecap="round"/>
-  <circle cx="650" cy="474" r="150" fill="#ffffff"/>
+  <!-- BudMix app icon: one earbud with sound coming out. -->
+  <g transform="translate(48 48) scale(9.28)"><rect width="100" height="100" rx="23" fill="#7C3AED"/><g transform="translate(42 16) rotate(-12) scale(.56)"><rect x="-11" y="44" width="22" height="84" rx="11" fill="#E9EBF1"/><ellipse cx="0" cy="34" rx="38" ry="35" fill="#ffffff"/><ellipse cx="-24" cy="27" rx="15" ry="18" fill="#BFC3CE"/><circle cx="16" cy="43" r="3.5" fill="#30333B"/><rect x="-11" y="114" width="22" height="9" rx="4" fill="#FBBF24"/></g><g fill="none" stroke="#fff" stroke-linecap="round"><path d="M70 24Q78 34 72 46" stroke-width="5"/><path d="M80 15Q92 34 83 55" stroke-width="5" opacity=".65"/></g></g>
 </svg>

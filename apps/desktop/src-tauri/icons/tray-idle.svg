@@ -1,9 +1,10 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="124 190 760 760">
-  <!-- Tray icon, no buds connected: the same shape, grey and outlined. -->
-  <g fill="none" stroke="#8a8a8a" stroke-linecap="round" stroke-width="72">
-    <path d="M170 310 C 320 310, 340 500, 470 500"/>
-    <path d="M170 690 C 320 690, 340 500, 470 500"/>
-    <path d="M676 640 L 700 800"/>
-    <circle cx="650" cy="474" r="130"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- Tray icon, no buds connected: the same bud in plain grey. -->
+  <g transform="translate(42 16) rotate(-12) scale(.56)" fill="#8a8a8a">
+    <rect x="-13" y="44" width="26" height="84" rx="13"/>
+    <ellipse cx="0" cy="34" rx="40" ry="37"/>
+  </g>
+  <g fill="none" stroke="#8a8a8a" stroke-linecap="round" stroke-width="7">
+    <path d="M70 24Q78 34 72 46"/><path d="M81 15Q93 34 84 55"/>
   </g>
 </svg>
