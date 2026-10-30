@@ -346,7 +346,7 @@ dependencies = [
 
 [[package]]
 name = "budmix-core"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "budmix-core",
  "log",
@@ -358,7 +358,7 @@ dependencies = [
 
 [[package]]
 name = "budmix-desktop"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "budmix-core",
  "budmix-miracast",
@@ -377,7 +377,7 @@ dependencies = [
 
 [[package]]
 name = "budmix-miracast"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "budmix-core",
  "log",
@@ -387,7 +387,7 @@ dependencies = [
 
 [[package]]
 name = "budmix-win"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "budmix-core",
  "log",
