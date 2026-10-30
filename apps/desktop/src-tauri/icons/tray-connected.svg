@@ -1,6 +1,10 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
-  <!-- Tray icon, buds connected: filled accent. -->
-  <path d="M260 540 C 330 250, 694 250, 764 540" fill="none" stroke="#2b88d8" stroke-width="80" stroke-linecap="round"/>
-  <circle cx="260" cy="680" r="190" fill="#2b88d8"/>
-  <circle cx="764" cy="680" r="190" fill="#2b88d8"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="124 190 760 760">
+  <!-- Tray icon, buds connected: two sounds merge into a filled earbud. -->
+  <g fill="none" stroke="#10b5a4" stroke-linecap="round">
+    <path d="M170 310 C 320 310, 340 500, 520 500" stroke-width="84"/>
+    <path d="M170 690 C 320 690, 340 500, 520 500" stroke-width="84"/>
+    <path d="M664 590 L 700 800" stroke-width="112"/>
+  </g>
+  <circle cx="650" cy="474" r="160" fill="#10b5a4"/>
+  <ellipse cx="812" cy="438" rx="62" ry="72" fill="#10b5a4"/>
 </svg>

@@ -49,7 +49,7 @@ interface SetupPanelProps {
   onPlayTone: () => Promise<void>;
 }
 
-/** Checks and fixes everything BudsLink needs from this PC. */
+/** Checks and fixes everything BudMix needs from this PC. */
 export function SetupPanel({ done, onDone, onPlayTone }: SetupPanelProps) {
   const [checks, setChecks] = useState<CheckResult[] | null>(null);
   const [running, setRunning] = useState<string | null>(null);
@@ -76,7 +76,7 @@ export function SetupPanel({ done, onDone, onPlayTone }: SetupPanelProps) {
     setMessage(null);
     try {
       await api.runFix(check.fix);
-      // Settings pages change things outside BudsLink; check again after.
+      // Settings pages change things outside BudMix; check again after.
       if (check.fix.kind !== "openSettings") await load();
     } catch (err) {
       setMessage(String(err));
@@ -109,8 +109,8 @@ export function SetupPanel({ done, onDone, onPlayTone }: SetupPanelProps) {
           <h2 id="setup-title">{done ? "Setup check" : "Welcome: let's check this PC"}</h2>
           <p className="section__lead">
             {done
-              ? "Everything BudsLink needs from Windows, at a glance."
-              : 'BudsLink checks what it needs and fixes it for you. Buttons marked "(admin)" show one Windows prompt.'}
+              ? "Everything BudMix needs from Windows, at a glance."
+              : 'BudMix checks what it needs and fixes it for you. Buttons marked "(admin)" show one Windows prompt.'}
           </p>
         </div>
         {checks !== null && (

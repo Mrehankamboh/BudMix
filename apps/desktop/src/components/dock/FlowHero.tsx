@@ -211,7 +211,7 @@ export function FlowHero({ device, phones }: FlowHeroProps) {
     device ? `${device.name}: ${statusLabel(device).toLowerCase()}` : "No buds paired",
   ].join(". ");
 
-  const budsLink = link(LAPTOP.right, LAPTOP.mid, BUDS.x - 20, BUDS.y + 2);
+  const budsPath = link(LAPTOP.right, LAPTOP.mid, BUDS.x - 20, BUDS.y + 2);
   const budsTone: Tone = budsOn ? "buds" : budsBusy ? "busy" : "idle";
 
   return (
@@ -265,8 +265,8 @@ export function FlowHero({ device, phones }: FlowHeroProps) {
           </g>
         );
       })}
-      <path className={`hero-link hero-link--${budsTone}`} d={budsLink} />
-      <Pulses path={budsLink} tone={budsTone} />
+      <path className={`hero-link hero-link--${budsTone}`} d={budsPath} />
+      <Pulses path={budsPath} tone={budsTone} />
 
       {/* phones */}
       {placed.map(({ phone, slot }) => (

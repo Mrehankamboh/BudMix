@@ -1,6 +1,9 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
-  <!-- Tray icon, no buds connected: outlined. -->
-  <path d="M260 540 C 330 250, 694 250, 764 540" fill="none" stroke="#8a8a8a" stroke-width="80" stroke-linecap="round"/>
-  <circle cx="260" cy="680" r="150" fill="none" stroke="#8a8a8a" stroke-width="80"/>
-  <circle cx="764" cy="680" r="150" fill="none" stroke="#8a8a8a" stroke-width="80"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="124 190 760 760">
+  <!-- Tray icon, no buds connected: the same shape, grey and outlined. -->
+  <g fill="none" stroke="#8a8a8a" stroke-linecap="round" stroke-width="72">
+    <path d="M170 310 C 320 310, 340 500, 470 500"/>
+    <path d="M170 690 C 320 690, 340 500, 470 500"/>
+    <path d="M676 640 L 700 800"/>
+    <circle cx="650" cy="474" r="130"/>
+  </g>
 </svg>

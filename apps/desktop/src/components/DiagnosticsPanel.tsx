@@ -2,7 +2,7 @@ import { useState } from "react";
 
 import { api } from "../lib/api";
 
-/** Copies what BudsLink and Windows see, for a bug report. */
+/** Copies what BudMix and Windows see, for a bug report. */
 export function DiagnosticsPanel() {
   const [report, setReport] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
@@ -31,7 +31,7 @@ export function DiagnosticsPanel() {
         <div>
           <h2 id="diagnostics-title">Troubleshooting</h2>
           <p className="section__lead">
-            Something not connecting? Copy what BudsLink and Windows see and send it with your report.
+            Something not connecting? Copy what BudMix and Windows see and send it with your report.
             It includes device names and Bluetooth addresses.
           </p>
         </div>

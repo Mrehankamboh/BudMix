@@ -22,7 +22,7 @@ import {
 } from "../../lib/format";
 import { sourceRows } from "../../lib/sources";
 import type { AudioView, CastStatus, DeviceView, SourceView } from "../../lib/types";
-import { useBudsLink } from "../../lib/useBudsLink";
+import { useBudMix } from "../../lib/useBudMix";
 import { SourcesPanel } from "../SourcesPanel";
 import { CastBanner } from "./CastBanner";
 import { ExpandRow } from "./ExpandRow";
@@ -109,7 +109,7 @@ export function Dock() {
     forgetPhone,
     setVolume,
     showCastVideo,
-  } = useBudsLink();
+  } = useBudMix();
   const [open, setOpen] = useState<Section | null>(null);
   const root = useRef<HTMLDivElement>(null);
   useFitWindow(root);
@@ -146,7 +146,7 @@ export function Dock() {
     <div className="dock" ref={root}>
       <header className="dock__header">
         <div className="dock__titles">
-          <h1 className="dock__title">BudsLink</h1>
+          <h1 className="dock__title">BudMix</h1>
           <p className="dock__subtitle">{subtitle}</p>
         </div>
         <button

@@ -1,6 +1,6 @@
-//! Applies settings that live outside BudsLink: hotkey and autostart.
+//! Applies settings that live outside BudMix: hotkey and autostart.
 
-use budslink_core::{DeviceId, Settings};
+use budmix_core::{DeviceId, Settings};
 use tauri::{AppHandle, Emitter, Manager};
 use tauri_plugin_autostart::ManagerExt;
 
@@ -27,7 +27,7 @@ pub fn apply(app: &AppHandle, settings: &Settings) -> Vec<String> {
 fn sync_autostart(app: &AppHandle, wanted: bool) -> Result<(), String> {
     let launcher = app.autolaunch();
     let result = if wanted {
-        // Always (re)write it, so it points at this copy of BudsLink even
+        // Always (re)write it, so it points at this copy of BudMix even
         // if an older copy elsewhere registered itself first.
         launcher.enable()
     } else if launcher.is_enabled().unwrap_or(true) {

@@ -30,7 +30,7 @@ export function BudsHero({ device, audio, rows, demo, tone, onTestBeep }: BudsHe
       </div>
       <div className="hero-card__text">
         <p className="hero-card__brand">
-          <span>BudsLink</span>
+          <span>BudMix</span>
           {demo && <span className="badge">Demo mode: simulated devices</span>}
         </p>
         <h1 className="hero-card__device">{device?.name ?? "No buds yet"}</h1>

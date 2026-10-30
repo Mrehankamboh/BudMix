@@ -1,4 +1,4 @@
-# BudsLink website
+# BudMix website
 
 A single static page (`index.html` plus `assets/`): no build step, no
 scripts, no tracking. Light and dark follow the visitor's system theme.
@@ -19,5 +19,5 @@ Open `index.html` in a browser.
 ## Download button
 
 The buttons point to
-`https://github.com/Mrehankamboh/BudsLink/releases/latest`, which works once
+`https://github.com/Mrehankamboh/BudMix/releases/latest`, which works once
 a release is published and the repository is public.

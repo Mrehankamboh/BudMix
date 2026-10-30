@@ -1,6 +1,6 @@
 //! Notification-area icon: status at a glance and one-click switching.
 
-use budslink_core::{Command, ConnectionState, DeviceId, DeviceView, SourceView};
+use budmix_core::{Command, ConnectionState, DeviceId, DeviceView, SourceView};
 use tauri::image::Image;
 use tauri::menu::{CheckMenuItem, Menu, MenuEvent, MenuItem, PredefinedMenuItem};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};

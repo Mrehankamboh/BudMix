@@ -56,7 +56,7 @@ export function ConnectPhoneGuide() {
                 List empty? Tap <strong>⋮</strong> and tick <strong>Enable wireless display</strong>.
               </li>
               <li>
-                Tap <strong>BudsLink</strong>, then allow the phone on the laptop the first time.
+                Tap <strong>BudMix</strong>, then allow the phone on the laptop the first time.
               </li>
               <li>Play something. The phone goes quiet and the sound is in your buds.</li>
             </Steps>
@@ -69,7 +69,7 @@ export function ConnectPhoneGuide() {
         {tab === "others" && (
           <dl className="brand-list">
             <dt>Samsung</dt>
-            <dd>Quick settings → Smart View → BudsLink</dd>
+            <dd>Quick settings → Smart View → BudMix</dd>
             <dt>Xiaomi · Redmi · POCO</dt>
             <dd>Settings → Connection &amp; sharing → Cast</dd>
             <dt>OPPO · realme · OnePlus</dt>
@@ -83,7 +83,7 @@ export function ConnectPhoneGuide() {
           <Steps>
             <li>Pair the phone once: Windows Settings → Bluetooth &amp; devices → Add device.</li>
             <li>
-              Leave <strong>Phone connection</strong> on <strong>Auto</strong>. BudsLink connects to the phone by
+              Leave <strong>Phone connection</strong> on <strong>Auto</strong>. BudMix connects to the phone by
               itself whenever it is not casting.
             </li>
             <li>Play something on the phone. Nothing else to tap.</li>
@@ -92,7 +92,7 @@ export function ConnectPhoneGuide() {
 
         {tab === "help" && (
           <ul className="tips">
-            <li>Keep BudsLink running and Wi-Fi on, on both devices.</li>
+            <li>Keep BudMix running and Wi-Fi on, on both devices.</li>
             <li>Run the setup check above: the network must be Private and the Wi-Fi card must support Miracast.</li>
             <li>Turn the phone&apos;s Wi-Fi off and on, then open Cast again.</li>
             <li>Still nothing? Bluetooth always works: set Phone connection to Auto or Bluetooth only.</li>

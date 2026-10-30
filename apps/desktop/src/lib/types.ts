@@ -1,4 +1,4 @@
-// Mirrors the serde types in crates/budslink-core and src-tauri.
+// Mirrors the serde types in crates/budmix-core and src-tauri.
 
 export type ConnectionState = "disconnected" | "connecting" | "connected" | "disconnecting";
 

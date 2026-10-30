@@ -66,7 +66,7 @@ function wifiRow(cast: CastStatus | null): SourceRow {
   }
   switch (cast.receiver) {
     case "ready":
-      return { ...base, status: "waiting", detail: 'Ready: tap Cast → "BudsLink" on the phone' };
+      return { ...base, status: "waiting", detail: 'Ready: tap Cast → "BudMix" on the phone' };
     case "starting":
       return { ...base, status: "connecting", detail: "Starting the receiver" };
     case "failed":

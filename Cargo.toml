@@ -1,28 +1,28 @@
 [workspace]
 resolver = "3"
 members = [
-    "crates/budslink-core",
-    "crates/budslink-win",
-    "crates/budslink-miracast",
+    "crates/budmix-core",
+    "crates/budmix-win",
+    "crates/budmix-miracast",
     "apps/desktop/src-tauri",
 ]
 # The desktop app needs a webview toolchain; plain `cargo test` covers the libraries.
 default-members = [
-    "crates/budslink-core",
-    "crates/budslink-win",
-    "crates/budslink-miracast",
+    "crates/budmix-core",
+    "crates/budmix-win",
+    "crates/budmix-miracast",
 ]
 
 [workspace.package]
-version = "0.1.2"
+version = "0.2.0"
 edition = "2024"
 rust-version = "1.85"
 license = "MIT"
 
 [workspace.dependencies]
-budslink-core = { path = "crates/budslink-core" }
-budslink-win = { path = "crates/budslink-win" }
-budslink-miracast = { path = "crates/budslink-miracast" }
+budmix-core = { path = "crates/budmix-core" }
+budmix-win = { path = "crates/budmix-win" }
+budmix-miracast = { path = "crates/budmix-miracast" }
 log = "0.4"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"

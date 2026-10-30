@@ -1,10 +1,10 @@
-//! The setup wizard: checks what BudsLink needs from this PC and runs the
+//! The setup wizard: checks what BudMix needs from this PC and runs the
 //! fixes the user clicks.
 
 use std::thread;
 use std::time::Duration;
 
-use budslink_win::checks::{self, CheckResult, Fix, NetworkProfile, WifiCapabilities};
+use budmix_win::checks::{self, CheckResult, Fix, NetworkProfile, WifiCapabilities};
 use tauri::{AppHandle, Manager};
 
 use crate::state::AppState;
@@ -87,21 +87,21 @@ fn demo_system_checks() -> Vec<CheckResult> {
 
 #[cfg(windows)]
 fn system_checks() -> Vec<CheckResult> {
-    budslink_win::setup::SystemReport::collect().checks()
+    budmix_win::setup::SystemReport::collect().checks()
 }
 
 #[cfg(windows)]
 fn system_diagnostics() -> String {
-    budslink_win::setup::SystemReport::collect().diagnostics()
+    budmix_win::setup::SystemReport::collect().diagnostics()
 }
 
 #[cfg(windows)]
 fn apply(fix: Fix) -> Result<(), String> {
-    use budslink_win::checks::FixTask;
-    use budslink_win::setup;
+    use budmix_win::checks::FixTask;
+    use budmix_win::setup;
 
     let program =
-        std::env::current_exe().map_err(|err| format!("Couldn't find BudsLink.exe: {err}"))?;
+        std::env::current_exe().map_err(|err| format!("Couldn't find BudMix.exe: {err}"))?;
     match fix {
         Fix::OpenSettings { uri } => setup::open_settings(&uri),
         Fix::MakeNetworkPrivate { network } => {

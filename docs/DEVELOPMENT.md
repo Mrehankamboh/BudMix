@@ -24,13 +24,13 @@ cargo test --workspace                 # unit tests (pure logic, no hardware)
 cargo clippy --workspace --all-targets -- -D warnings
 cargo fmt --all --check
 
-# M0: does this laptop's built-in Miracast receiver work from BudsLink?
-cargo run -p budslink-miracast --example cast-probe
+# M0: does this laptop's built-in Miracast receiver work from BudMix?
+cargo run -p budmix-miracast --example cast-probe
 
 # Bluetooth audio devices, laptop audio and the test beep
-cargo run -p budslink-win --example bt-audio -- list
-cargo run -p budslink-win --example bt-audio -- status "{buds-id}"
-cargo run -p budslink-win --example bt-audio -- tone "{buds-id}"
+cargo run -p budmix-win --example bt-audio -- list
+cargo run -p budmix-win --example bt-audio -- status "{buds-id}"
+cargo run -p budmix-win --example bt-audio -- tone "{buds-id}"
 ```
 
 The desktop app (from `apps/desktop`):
@@ -40,17 +40,17 @@ pnpm install
 pnpm test            # UI tests (Vitest)
 pnpm typecheck
 pnpm tauri dev       # run the app
-$env:BUDSLINK_DEMO = "1"; pnpm tauri dev   # simulated buds and phone, no hardware
-pnpm tauri build     # target/release/budslink.exe and the NSIS installer
+$env:BUDMIX_DEMO = "1"; pnpm tauri dev   # simulated buds and phone, no hardware
+pnpm tauri build     # target/release/budmix.exe and the NSIS installer
 ```
 
 ## Layout
 
 ```
 crates/
-  budslink-core/       device model, state machines, reconnect policy, settings (no OS code)
-  budslink-win/        Windows backend: Bluetooth endpoints, connect/disconnect, phone audio
-  budslink-miracast/   Miracast receiver; examples/cast-probe.rs
+  budmix-core/       device model, state machines, reconnect policy, settings (no OS code)
+  budmix-win/        Windows backend: Bluetooth endpoints, connect/disconnect, phone audio
+  budmix-miracast/   Miracast receiver; examples/cast-probe.rs
 apps/desktop/          Tauri 2 app: tray, dock, settings window (React UI in src/)
 docs/                  development, hardware testing, connecting the phone
 ```

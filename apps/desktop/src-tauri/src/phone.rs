@@ -3,7 +3,7 @@
 
 use std::sync::{Mutex, PoisonError};
 
-use budslink_core::{BridgeState, CastPhase, CastStatus, PhoneMode, SourceView};
+use budmix_core::{BridgeState, CastPhase, CastStatus, PhoneMode, SourceView};
 use tauri::{AppHandle, Emitter, Manager};
 use tauri_plugin_notification::NotificationExt;
 
@@ -26,7 +26,7 @@ pub fn sources_changed(app: &AppHandle, views: &[SourceView]) {
     seed_phones(app, &state, views);
 }
 
-/// First run: "BudsLink connects the paired phone itself over Bluetooth", so
+/// First run: "BudMix connects the paired phone itself over Bluetooth", so
 /// every paired phone is turned on once. The user can turn any off later.
 fn seed_phones(app: &AppHandle, state: &AppState, views: &[SourceView]) {
     let settings = state.settings();
@@ -67,7 +67,7 @@ pub fn cast_changed(app: &AppHandle, status: &CastStatus, last_phase: &Mutex<Cas
             notify(
                 app,
                 &format!("{phone} wants to cast"),
-                "Open BudsLink from the tray to allow or refuse it.",
+                "Open BudMix from the tray to allow or refuse it.",
             );
             crate::dock::show(app);
         }

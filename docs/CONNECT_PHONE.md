@@ -1,12 +1,12 @@
 # Connecting your phone
 
-BudsLink can take your phone's audio two ways. Nothing is installed on the
+BudMix can take your phone's audio two ways. Nothing is installed on the
 phone in either case.
 
 ## Over Wi-Fi: Cast (Miracast)
 
 The phone sends its screen and sound with Android's built-in cast feature.
-BudsLink shows up in the phone's list as **BudsLink**.
+BudMix shows up in the phone's list as **BudMix**.
 
 Miracast uses Wi-Fi Direct, a direct link between the phone and the laptop, so
 the router is not involved. Keep Wi-Fi turned **on** on both devices.
@@ -25,17 +25,17 @@ not been checked on this exact model yet (item M0-3 of the
 3. If the list is empty: tap **⋮** (three dots, top right) and tick
    **Enable wireless display**. This option is hidden until you open that
    menu.
-4. Wait a few seconds and tap **BudsLink**.
+4. Wait a few seconds and tap **BudMix**.
 5. If the laptop shows a PIN, type it on the phone.
 6. Play something on the phone. The phone's speaker should go quiet and the
    sound should come from the buds.
 
-To stop: open Cast again and tap **BudsLink → Disconnect**, or use the cast
+To stop: open Cast again and tap **BudMix → Disconnect**, or use the cast
 notification.
 
 ### Other Android phones
 
-- **Samsung:** Quick Settings → **Smart View** → BudsLink.
+- **Samsung:** Quick Settings → **Smart View** → BudMix.
 - **Xiaomi / Redmi / POCO:** Settings → Connection & sharing → **Cast**.
 - **OPPO / realme / OnePlus:** Settings → Connected devices / Bluetooth & device
   connection → **Screencast** or **Wireless display**.
@@ -45,5 +45,5 @@ notification.
 
 Pair the phone with the laptop once in **Windows Settings → Bluetooth &
 devices → Add device**. With *Phone connection* on Auto (the default),
-BudsLink connects to the paired phone by itself whenever the phone is not
+BudMix connects to the paired phone by itself whenever the phone is not
 casting, so you don't need to touch the phone.

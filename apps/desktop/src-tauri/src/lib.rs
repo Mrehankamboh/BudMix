@@ -1,5 +1,5 @@
-//! BudsLink desktop shell: window, tray, hotkey and autostart around the
-//! platform-independent runtimes in `budslink-core` (buds switching and
+//! BudMix desktop shell: window, tray, hotkey and autostart around the
+//! platform-independent runtimes in `budmix-core` (buds switching and
 //! bridge mode).
 
 mod commands;
@@ -17,8 +17,8 @@ mod tray;
 
 use std::sync::Arc;
 
-use budslink_core::bridge::default_retry_policy;
-use budslink_core::{
+use budmix_core::bridge::default_retry_policy;
+use budmix_core::{
     AudioBackend, AudioRuntime, BridgeRuntime, CastBackend, CastConfig, CastRuntime, DeviceBackend,
     DeviceView, Runtime, SourceBackend, route_target,
 };
@@ -27,14 +27,14 @@ use tauri::{AppHandle, Emitter, Manager, WebviewUrl, WebviewWindowBuilder, Windo
 use crate::state::AppState;
 
 pub const MAIN_WINDOW: &str = "main";
-/// Passed by autostart so BudsLink starts in the tray.
+/// Passed by autostart so BudMix starts in the tray.
 pub const MINIMIZED_ARG: &str = "--minimized";
 pub const DEVICES_CHANGED: &str = "devices-changed";
 pub const SOURCES_CHANGED: &str = "sources-changed";
 pub const AUDIO_CHANGED: &str = "audio-changed";
 pub const CAST_CHANGED: &str = "cast-changed";
 /// Set to `1` to use simulated devices, e.g. for demos and screenshots.
-pub const DEMO_ENV: &str = "BUDSLINK_DEMO";
+pub const DEMO_ENV: &str = "BUDMIX_DEMO";
 
 pub fn run() {
     instance::wait_if_replacing();
@@ -85,7 +85,7 @@ pub fn run() {
         })
         .on_window_event(|window, event| match event {
             WindowEvent::CloseRequested { api, .. } => {
-                // Closing a window keeps BudsLink running in the tray.
+                // Closing a window keeps BudMix running in the tray.
                 let quitting = window
                     .app_handle()
                     .try_state::<AppState>()
@@ -101,7 +101,7 @@ pub fn run() {
             _ => {}
         })
         .run(tauri::generate_context!())
-        .expect("error while running BudsLink");
+        .expect("error while running BudMix");
 }
 
 fn setup(app: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
@@ -115,7 +115,7 @@ fn setup(app: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
     let settings = state::load_settings(&settings_path);
     let (backend, sources, audio_backend, cast_backend) = create_backends();
     log::info!(
-        "BudsLink {} starting with the {} backend",
+        "BudMix {} starting with the {} backend",
         app.package_info().version,
         backend.name()
     );
@@ -159,7 +159,7 @@ fn setup(app: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
 
     let events = app.clone();
     let allowed_events = app.clone();
-    let last_phase = std::sync::Mutex::new(budslink_core::CastPhase::Idle);
+    let last_phase = std::sync::Mutex::new(budmix_core::CastPhase::Idle);
     let cast = CastRuntime::spawn(
         cast_backend,
         CastConfig {
@@ -233,34 +233,34 @@ fn create_backends() -> Backends {
     #[cfg(windows)]
     if !demo {
         return (
-            Arc::new(budslink_win::WindowsBackend::new()),
-            Arc::new(budslink_win::PhoneAudioBackend::new()),
-            Arc::new(budslink_win::WindowsAudioBackend::new()),
-            Arc::new(budslink_miracast::MiracastBackend::new()),
+            Arc::new(budmix_win::WindowsBackend::new()),
+            Arc::new(budmix_win::PhoneAudioBackend::new()),
+            Arc::new(budmix_win::WindowsAudioBackend::new()),
+            Arc::new(budmix_miracast::MiracastBackend::new()),
         );
     }
     if !demo {
         log::warn!("no Bluetooth backend for this platform; using demo devices");
     }
-    let devices = budslink_core::fake::FakeBackend::demo();
+    let devices = budmix_core::fake::FakeBackend::demo();
     (
         Arc::new(devices.clone()),
-        Arc::new(budslink_core::fake::FakeSourceBackend::demo()),
-        Arc::new(budslink_core::fake::FakeAudioBackend::linked(devices)),
-        Arc::new(budslink_core::fake::FakeCastBackend::demo()),
+        Arc::new(budmix_core::fake::FakeSourceBackend::demo()),
+        Arc::new(budmix_core::fake::FakeAudioBackend::linked(devices)),
+        Arc::new(budmix_core::fake::FakeCastBackend::demo()),
     )
 }
 
 fn supports_mica() -> bool {
     #[cfg(windows)]
-    return budslink_win::supports_mica();
+    return budmix_win::supports_mica();
     #[cfg(not(windows))]
     false
 }
 
 pub fn windows_build() -> Option<u32> {
     #[cfg(windows)]
-    return budslink_win::windows_build();
+    return budmix_win::windows_build();
     #[cfg(not(windows))]
     None
 }
@@ -268,7 +268,7 @@ pub fn windows_build() -> Option<u32> {
 /// The full window, used for settings. It starts hidden.
 fn create_main_window(app: &AppHandle, mica: bool) -> tauri::Result<()> {
     let builder = WebviewWindowBuilder::new(app, MAIN_WINDOW, WebviewUrl::default())
-        .title("BudsLink settings")
+        .title("BudMix settings")
         .inner_size(460.0, 720.0)
         .min_inner_size(380.0, 520.0)
         .center()

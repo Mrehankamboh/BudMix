@@ -1,6 +1,6 @@
 # Third-party notices
 
-BudsLink is MIT licensed. It builds on the following free software.
+BudMix is MIT licensed. It builds on the following free software.
 
 | Project | Used for | License |
 |---|---|---|

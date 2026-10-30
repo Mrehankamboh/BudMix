@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 
-use budslink_core::{
+use budmix_core::{
     AudioHandle, AudioRuntime, BridgeHandle, BridgeRuntime, CastHandle, CastRuntime, Runtime,
     RuntimeHandle, Settings, SourceBackend,
 };
@@ -186,7 +186,7 @@ mod tests {
 
     #[test]
     fn corrupt_settings_are_moved_aside() {
-        let dir = std::env::temp_dir().join(format!("budslink-test-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("budmix-test-{}", std::process::id()));
         fs::create_dir_all(&dir).unwrap();
         let path = dir.join("settings.json");
         fs::write(&path, "{ broken").unwrap();

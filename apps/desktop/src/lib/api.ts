@@ -59,7 +59,7 @@ export const api = {
   setupChecks: () => invoke<CheckResult[]>("setup_checks"),
   /** Runs the fix behind a check's button; admin fixes show one Windows prompt. */
   runFix: (fix: Fix) => invoke<void>("run_fix", { fix }),
-  /** What BudsLink and Windows see, as text for a bug report. */
+  /** What BudMix and Windows see, as text for a bug report. */
   diagnostics: () => invoke<string>("diagnostics"),
   /** Opens the full window (settings) and closes the dock. */
   openSettings: () => invoke<void>("open_settings"),

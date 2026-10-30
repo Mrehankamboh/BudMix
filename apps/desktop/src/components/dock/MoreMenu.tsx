@@ -65,7 +65,7 @@ export function MoreMenu({ startWithWindows, onStartWithWindows, onSettings, onQ
           <div className="menu__separator" role="separator" />
           <button type="button" role="menuitem" className="menu__item" onClick={choose(onQuit)}>
             <span className="menu__check" />
-            Quit BudsLink
+            Quit BudMix
           </button>
         </div>
       )}

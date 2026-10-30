@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-  One-time fixes BudsLink needs admin rights for. BudsLink runs this script
+  One-time fixes BudMix needs admin rights for. BudMix runs this script
   elevated (one UAC prompt) only for the tasks the user clicked.
 
 .PARAMETER Tasks
@@ -8,7 +8,7 @@
 .PARAMETER Network
   Name of the Wi-Fi network to mark Private (task "network").
 .PARAMETER Program
-  Full path of BudsLink.exe (task "firewall").
+  Full path of BudMix.exe (task "firewall").
 #>
 param(
     [string]$Tasks = "",
@@ -17,7 +17,7 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
-$log = Join-Path $env:TEMP "budslink-fix.log"
+$log = Join-Path $env:TEMP "budmix-fix.log"
 $failed = 0
 
 function Write-Log([string]$message) {
@@ -41,10 +41,10 @@ foreach ($task in $Tasks.Split(",") | ForEach-Object { $_.Trim().ToLowerInvarian
             }
             "firewall" {
                 if (-not (Test-Path -LiteralPath $Program)) { throw "program not found: $Program" }
-                Get-NetFirewallRule -DisplayName "BudsLink (Private networks)" -ErrorAction SilentlyContinue |
+                Get-NetFirewallRule -DisplayName "BudMix (Private networks)" -ErrorAction SilentlyContinue |
                     Remove-NetFirewallRule
-                New-NetFirewallRule -DisplayName "BudsLink (Private networks)" `
-                    -Description "Lets a phone's Miracast cast reach BudsLink on Private networks only." `
+                New-NetFirewallRule -DisplayName "BudMix (Private networks)" `
+                    -Description "Lets a phone's Miracast cast reach BudMix on Private networks only." `
                     -Direction Inbound -Action Allow -Profile Private -Program $Program | Out-Null
                 Write-Log "firewall: rule added for $Program (Private only)"
             }

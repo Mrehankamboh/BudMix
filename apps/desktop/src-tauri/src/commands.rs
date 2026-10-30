@@ -1,10 +1,10 @@
 //! Commands invoked by the web UI.
 
-use budslink_core::{
+use budmix_core::{
     AudioView, CastStatus, Command, DeviceId, DeviceView, Level, Settings, SourceView,
     UnavailableSource, VolumeSource,
 };
-use budslink_win::checks::{CheckResult, Fix};
+use budmix_win::checks::{CheckResult, Fix};
 use tauri::{AppHandle, Manager, State};
 
 use crate::state::{AppInfo, AppState};
@@ -64,7 +64,7 @@ pub async fn list_unavailable_phones(
         .map_err(|err| err.to_string())
 }
 
-/// What BudsLink shows and Windows reports, as text for a bug report.
+/// What BudMix shows and Windows reports, as text for a bug report.
 #[tauri::command]
 pub async fn diagnostics(app: AppHandle, state: State<'_, AppState>) -> Result<String, String> {
     let sources = state.sources();

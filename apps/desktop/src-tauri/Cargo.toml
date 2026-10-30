@@ -1,6 +1,6 @@
 [package]
-name = "budslink-desktop"
-description = "BudsLink desktop app: tray, hotkeys and UI for switching Bluetooth buds."
+name = "budmix-desktop"
+description = "BudMix desktop app: tray, hotkeys and UI for switching Bluetooth buds."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -8,20 +8,20 @@ license.workspace = true
 publish = false
 
 [lib]
-name = "budslink_desktop"
+name = "budmix_desktop"
 
 [[bin]]
-name = "budslink"
+name = "budmix"
 path = "src/main.rs"
 
 [build-dependencies]
 tauri-build = { version = "2.7", features = [] }
 
 [dependencies]
-budslink-core = { workspace = true, features = ["fake"] }
+budmix-core = { workspace = true, features = ["fake"] }
 # Only its pure modules (setup checks) are used off Windows.
-budslink-win.workspace = true
-budslink-miracast.workspace = true
+budmix-win.workspace = true
+budmix-miracast.workspace = true
 log.workspace = true
 serde.workspace = true
 serde_json.workspace = true

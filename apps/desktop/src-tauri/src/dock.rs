@@ -22,7 +22,7 @@ const MARGIN: f64 = 12.0;
 /// the dock, which hides it; the click itself must then not reopen it.
 const REOPEN_GUARD: Duration = Duration::from_millis(300);
 /// Set to `1` to keep the dock open when it loses focus (demos, recordings).
-pub const PINNED_ENV: &str = "BUDSLINK_DOCK_PINNED";
+pub const PINNED_ENV: &str = "BUDMIX_DOCK_PINNED";
 
 /// A rectangle in physical pixels.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -108,7 +108,7 @@ fn lock<T>(mutex: &Mutex<T>) -> MutexGuard<'_, T> {
 pub fn create(app: &AppHandle, backdrop: bool) -> tauri::Result<()> {
     app.manage(DockState::default());
     let builder = WebviewWindowBuilder::new(app, DOCK_WINDOW, WebviewUrl::default())
-        .title("BudsLink")
+        .title("BudMix")
         .inner_size(DOCK_WIDTH, DEFAULT_HEIGHT)
         .decorations(false)
         .resizable(false)

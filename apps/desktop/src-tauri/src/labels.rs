@@ -1,6 +1,6 @@
 //! Text shown in the tray. Pure functions, unit-tested.
 
-use budslink_core::{BridgeState, ConnectionState, DeviceView, SourceView};
+use budmix_core::{BridgeState, ConnectionState, DeviceView, SourceView};
 
 pub fn menu_label(view: &DeviceView) -> String {
     let status = match (view.state, view.reconnect_attempt) {
@@ -32,9 +32,9 @@ pub fn tooltip(devices: &[DeviceView], phones: &[SourceView]) -> String {
         .map(|view| view.name.as_str())
         .collect();
     let mut text = if connected.is_empty() {
-        "BudsLink: no buds connected".to_owned()
+        "BudMix: no buds connected".to_owned()
     } else {
-        format!("BudsLink: {} connected", connected.join(", "))
+        format!("BudMix: {} connected", connected.join(", "))
     };
     let streaming: Vec<&str> = phones
         .iter()
@@ -49,7 +49,7 @@ pub fn tooltip(devices: &[DeviceView], phones: &[SourceView]) -> String {
 
 #[cfg(test)]
 mod tests {
-    use budslink_core::DeviceId;
+    use budmix_core::DeviceId;
 
     use super::*;
 
@@ -123,7 +123,7 @@ mod tests {
     #[test]
     fn tooltips() {
         use ConnectionState::*;
-        assert_eq!(tooltip(&[], &[]), "BudsLink: no buds connected");
+        assert_eq!(tooltip(&[], &[]), "BudMix: no buds connected");
         assert_eq!(
             tooltip(
                 &[
@@ -133,14 +133,14 @@ mod tests {
                 ],
                 &[phone(BridgeState::Waiting)]
             ),
-            "BudsLink: A, C connected"
+            "BudMix: A, C connected"
         );
         assert_eq!(
             tooltip(
                 &[view("A", Connected, None)],
                 &[phone(BridgeState::Streaming)]
             ),
-            "BudsLink: A connected + Pixel audio"
+            "BudMix: A connected + Pixel audio"
         );
     }
 }

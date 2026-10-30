@@ -84,7 +84,7 @@ export function PhoneAudioPanel({ phones, unavailable = [], onToggle }: PhoneAud
       {unavailable.length > 0 && <p className="muted small">{UNAVAILABLE_HINT}</p>}
 
       <p className="footnote">
-        Windows shows a paired phone as “Not connected” until you switch it on here. BudsLink then
+        Windows shows a paired phone as “Not connected” until you switch it on here. BudMix then
         connects it and keeps it connected. For calls, Windows Phone Link brings them to the buds
         too.
       </p>

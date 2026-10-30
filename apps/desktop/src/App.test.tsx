@@ -142,7 +142,7 @@ describe("App", () => {
     render(<App />);
     expect(await screen.findByRole("listitem", { name: "Test Buds" })).toBeInTheDocument();
     expect(screen.getByText("Demo mode: simulated devices")).toBeInTheDocument();
-    expect(await screen.findByText(/BudsLink v0.1.0/)).toBeInTheDocument();
+    expect(await screen.findByText(/BudMix v0.1.0/)).toBeInTheDocument();
   });
 
   it("connects a disconnected device", async () => {

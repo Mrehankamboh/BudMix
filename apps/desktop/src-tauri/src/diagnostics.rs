@@ -1,7 +1,7 @@
-//! The plain-text report behind "Copy diagnostics": what BudsLink shows and
+//! The plain-text report behind "Copy diagnostics": what BudMix shows and
 //! what Windows reports, so a bug report says what the user's machine sees.
 
-use budslink_core::{AudioView, DeviceView, SourceView};
+use budmix_core::{AudioView, DeviceView, SourceView};
 
 pub struct Header<'a> {
     pub version: &'a str,
@@ -18,7 +18,7 @@ pub fn render(
     system: &str,
 ) -> String {
     let mut lines = vec![format!(
-        "BudsLink {} · {} backend · {}",
+        "BudMix {} · {} backend · {}",
         header.version,
         header.backend,
         header.windows_build.map_or_else(
@@ -63,7 +63,7 @@ pub fn render(
     }
 
     lines.push("Laptop audio:".to_owned());
-    let name = |output: &Option<budslink_core::Endpoint>| {
+    let name = |output: &Option<budmix_core::Endpoint>| {
         output
             .as_ref()
             .map_or_else(|| "none".to_owned(), |output| output.name.clone())
@@ -106,12 +106,12 @@ fn with_error(line: String, error: Option<&str>) -> String {
 
 #[cfg(test)]
 mod tests {
-    use budslink_core::{AudioProfile, BridgeState, ConnectionState, DeviceId, Endpoint};
+    use budmix_core::{AudioProfile, BridgeState, ConnectionState, DeviceId, Endpoint};
 
     use super::*;
 
     #[test]
-    fn report_lists_what_budslink_and_windows_see() {
+    fn report_lists_what_budmix_and_windows_see() {
         let devices = [DeviceView {
             id: DeviceId::new("tws"),
             name: "TWS".into(),
@@ -154,7 +154,7 @@ mod tests {
 
         assert_eq!(
             report,
-            "BudsLink 0.3.2 · windows backend · Windows build 26100\n\
+            "BudMix 0.3.2 · windows backend · Windows build 26100\n\
              Buds and headphones (1):\n  TWS · connected · stereo, handsfree\n\
              Phones (1):\n  Pixel 7 · waiting · phone audio on · last error: The phone didn't answer.\n\
              Laptop audio:\n  default output: Headphones (TWS)\n  buds output: Headphones (TWS)\n  \

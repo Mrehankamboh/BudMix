@@ -10,7 +10,7 @@ vi.mock("../lib/api", () => ({
 }));
 
 const mocked = vi.mocked(api);
-const REPORT = "BudsLink 0.3.2 · windows backend · Windows build 26100";
+const REPORT = "BudMix 0.3.2 · windows backend · Windows build 26100";
 
 let writeText: ReturnType<typeof vi.fn>;
 

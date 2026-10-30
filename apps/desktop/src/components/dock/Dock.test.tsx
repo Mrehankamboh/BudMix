@@ -221,7 +221,7 @@ describe("Dock", () => {
     expect(mocked.updateSettings).toHaveBeenCalledWith({ ...settings, startWithWindows: true });
 
     await userEvent.click(screen.getByRole("button", { name: "More" }));
-    await userEvent.click(screen.getByRole("menuitem", { name: "Quit BudsLink" }));
+    await userEvent.click(screen.getByRole("menuitem", { name: "Quit BudMix" }));
     expect(mocked.quitApp).toHaveBeenCalled();
   });
 

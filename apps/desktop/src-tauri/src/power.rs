@@ -21,7 +21,7 @@ fn slept(before: SystemTime, after: SystemTime) -> bool {
 
 pub fn watch_for_wake(app: AppHandle) {
     let spawned = thread::Builder::new()
-        .name("budslink-wake".into())
+        .name("budmix-wake".into())
         .spawn(move || {
             let mut before = SystemTime::now();
             loop {

@@ -9,7 +9,7 @@ import { SourcesPanel } from "./components/SourcesPanel";
 import { api } from "./lib/api";
 import { focusDevice } from "./lib/focus";
 import { sourceRows } from "./lib/sources";
-import { useBudsLink } from "./lib/useBudsLink";
+import { useBudMix } from "./lib/useBudMix";
 
 /** The full window: the buds, every source and phone, and all settings. */
 export function App() {
@@ -31,7 +31,7 @@ export function App() {
     rejectPhone,
     forgetPhone,
     setVolume,
-  } = useBudsLink();
+  } = useBudMix();
   const device = focusDevice(devices ?? [], settings?.preferredDevice ?? null);
   const rows = sourceRows(device, audio, cast, phones ?? []);
 
@@ -115,7 +115,7 @@ export function App() {
         <DiagnosticsPanel />
       </main>
 
-      <footer className="app__footer muted">BudsLink v{info?.version ?? "…"} · based on BudsBridge</footer>
+      <footer className="app__footer muted">BudMix v{info?.version ?? "…"} · based on BudsBridge</footer>
     </div>
   );
 }

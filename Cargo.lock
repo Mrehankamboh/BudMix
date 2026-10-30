@@ -345,10 +345,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "budslink-core"
-version = "0.1.2"
+name = "budmix-core"
+version = "0.2.0"
 dependencies = [
- "budslink-core",
+ "budmix-core",
  "log",
  "serde",
  "serde_json",
@@ -357,12 +357,12 @@ dependencies = [
 ]
 
 [[package]]
-name = "budslink-desktop"
-version = "0.1.2"
+name = "budmix-desktop"
+version = "0.2.0"
 dependencies = [
- "budslink-core",
- "budslink-miracast",
- "budslink-win",
+ "budmix-core",
+ "budmix-miracast",
+ "budmix-win",
  "log",
  "serde",
  "serde_json",
@@ -376,20 +376,20 @@ dependencies = [
 ]
 
 [[package]]
-name = "budslink-miracast"
-version = "0.1.2"
+name = "budmix-miracast"
+version = "0.2.0"
 dependencies = [
- "budslink-core",
+ "budmix-core",
  "log",
  "windows",
  "windows-numerics",
 ]
 
 [[package]]
-name = "budslink-win"
-version = "0.1.2"
+name = "budmix-win"
+version = "0.2.0"
 dependencies = [
- "budslink-core",
+ "budmix-core",
  "log",
  "serde",
  "serde_json",

@@ -1,13 +1,17 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
-  <!-- Placeholder app icon: two buds joined by a bridge arc. -->
+  <!-- BudMix app icon: two sounds merge into one earbud. -->
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#2b88d8"/>
-      <stop offset="1" stop-color="#005a9e"/>
+      <stop offset="0" stop-color="#5b4bf0"/>
+      <stop offset="1" stop-color="#10b5a4"/>
     </linearGradient>
   </defs>
-  <rect x="64" y="64" width="896" height="896" rx="200" fill="url(#bg)"/>
-  <path d="M300 560 C 360 300, 664 300, 724 560" fill="none" stroke="#ffffff" stroke-width="56" stroke-linecap="round"/>
-  <circle cx="300" cy="640" r="112" fill="#ffffff"/>
-  <circle cx="724" cy="640" r="112" fill="#ffffff"/>
+  <rect x="48" y="48" width="928" height="928" rx="216" fill="url(#bg)"/>
+  <g fill="none" stroke="#ffffff" stroke-linecap="round">
+    <path d="M170 310 C 320 310, 340 500, 520 500" stroke-width="72"/>
+    <path d="M170 690 C 320 690, 340 500, 520 500" stroke-width="72" opacity=".7"/>
+  </g>
+  <ellipse cx="808" cy="438" rx="66" ry="74" fill="#ffffff" opacity=".72"/>
+  <path d="M664 590 L 700 800" fill="none" stroke="#ffffff" stroke-width="104" stroke-linecap="round"/>
+  <circle cx="650" cy="474" r="150" fill="#ffffff"/>
 </svg>
