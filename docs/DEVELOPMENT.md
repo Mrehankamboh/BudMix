@@ -44,6 +44,12 @@ $env:BUDMIX_DEMO = "1"; pnpm tauri dev   # simulated buds and phone, no hardware
 pnpm tauri build     # target/release/budmix.exe and the NSIS installer
 ```
 
+## Releases
+
+Every release must include the installer as `BudMix-windows-x64-setup.exe`, next
+to the versioned copy. The site's download buttons link to that fixed name under
+`releases/latest/download/`, so without it they return 404.
+
 ## Layout
 
 ```

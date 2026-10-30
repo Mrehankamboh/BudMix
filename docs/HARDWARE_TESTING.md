@@ -120,4 +120,4 @@ Start the app (`pnpm tauri dev` in `apps/desktop`, or the installed BudMix). The
 | Buds | TWS |
 | Phone | Infinix Hot 11 Play, Android 11, XOS |
 | Latency (Wi-Fi / Bluetooth) | |
-| Problems seen | |
+| Problems seen | Cast had no sound until the firewall allowed BudMix on the direct Wi-Fi link (Public profile, local subnet). With that rule, cast sound works (2026-10-31) |
