@@ -10,25 +10,38 @@ BudsLink is a small Windows 11 tray app. Your buds stay connected to the laptop;
 
 ## How it works
 
-```
-                 Wi-Fi Direct (Miracast cast)              Bluetooth (A2DP stereo)
- [Phone] ──────────────────────────────────► [Laptop: BudsLink] ─────────────► [Buds]
-    │          or Bluetooth (A2DP), automatic         ▲   Windows mixes every
-    └─────────────────────────────────────────────────┤   stream into the buds
-                                                      │
-                          the laptop's own sound (YouTube, Zoom, any app)
+Earbuds without multipoint can hold only one connection. So BudsLink keeps that one connection on the laptop and brings the phone's sound to the laptop instead.
+
+```mermaid
+flowchart LR
+    phone["📱 Phone<br/>video, music"]
+    laptop["💻 Laptop · BudsLink<br/>Windows mixes every sound"]
+    apps["🎬 Laptop apps<br/>YouTube, Zoom, …"]
+    buds["🎧 Buds<br/>you hear both"]
+
+    phone -- "Wi-Fi: Cast (Miracast)" --> laptop
+    phone -. "Bluetooth: automatic fallback" .-> laptop
+    apps --> laptop
+    laptop -- "Bluetooth stereo (A2DP)" --> buds
 ```
 
-| Path | How | Phone side |
+1. **The buds stay on the laptop.** BudsLink connects them, reconnects them after a drop, and makes them the laptop's default output. When they go away, your previous output comes back.
+2. **The phone sends its sound to the laptop**, one of two ways, with nothing installed on the phone:
+   - **Wi-Fi:** BudsLink contains a Miracast receiver (`Windows.Media.Miracast`). It shows up as **BudsLink** in the phone's Cast list, like a TV. Tap it once.
+   - **Bluetooth:** the laptop acts as a Bluetooth speaker for the paired phone (`AudioPlaybackConnection`), and BudsLink opens that link itself. Nothing to tap.
+3. **Windows mixes everything into the buds:** the phone plus every app on the laptop, each with its own volume slider in BudsLink.
+
+### Which way the phone connects
+
+| Setting | While the phone casts | Otherwise |
 |---|---|---|
-| **Buds** | BudsLink connects and reconnects them, makes them the default output, and gives your previous output back when they go away | — |
-| **Phone over Wi-Fi** | BudsLink contains a Miracast receiver (`Windows.Media.Miracast`). It appears as **BudsLink** in the phone's Cast list | Tap **Cast → BudsLink** |
-| **Phone over Bluetooth** | The laptop acts as a Bluetooth speaker for the paired phone (`AudioPlaybackConnection`), and BudsLink opens that link itself | Nothing |
-| **Laptop** | Every app plays to the default output, which is the buds | — |
+| **Auto** (default) | Wi-Fi | Bluetooth |
+| **Wi-Fi only** | Wi-Fi | — |
+| **Bluetooth only** | — | Bluetooth |
 
-**Phone connection** setting: *Auto* (Wi-Fi while the phone casts, Bluetooth otherwise), *Wi-Fi only* or *Bluetooth only*. The same phone never plays twice: while it casts, the Bluetooth link is held off; 3 s after the cast ends it comes back.
+The same phone never plays twice, so there is no echo: while it casts, the Bluetooth link is held off, and about 3 s after the cast ends it comes back.
 
-Android does not let another device pull audio out of a phone over Wi-Fi by itself, so the Wi-Fi path always needs the phone to tap **Cast**. The Bluetooth path needs no tap.
+Android does not let another device pull sound out of a phone over Wi-Fi by itself, so the Wi-Fi way always needs one tap on **Cast**. The Bluetooth way needs none.
 
 ## Features
 
@@ -116,11 +129,6 @@ scripts/               fix-prereqs.ps1 (the one-time admin fixes)
 docs/                  development, hardware testing, connecting the phone
 ```
 
-## Credits
-
-BudsLink is based on **[BudsBridge](https://github.com/shakaibarsalan/BudsBridge)** by Muhammad Shakaib Arsalan (MIT): the device model, the connection and bridge state machines, reconnect policies, settings, the Windows Bluetooth/Core Audio backend, the tray dock and its UI come from it. Thank you!
-The Bluetooth connect technique follows [ToothTray](https://github.com/m2jean/ToothTray) (BSD-2-Clause). Third-party licenses: [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
-
 ## License
 
-MIT. See [LICENSE](LICENSE), which keeps the BudsBridge copyright notice.
+MIT. See [LICENSE](LICENSE) and, for the open-source parts BudsLink uses, [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
