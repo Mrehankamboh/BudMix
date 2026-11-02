@@ -4,7 +4,7 @@
 use std::thread;
 use std::time::Duration;
 
-use budmix_win::checks::{self, CheckResult, Fix, NetworkProfile, WifiCapabilities};
+use budmix_win::checks::{self, CheckResult, Fix, PowerShellReport, WifiCapabilities};
 use tauri::{AppHandle, Manager};
 
 use crate::state::AppState;
@@ -53,6 +53,15 @@ pub fn run_fix(app: &AppHandle, fix: Fix) -> Result<(), String> {
     apply(fix)
 }
 
+/// Can a casting phone's sound get past the firewall? When Windows doesn't
+/// say, BudMix doesn't ask.
+pub fn cast_sound_allowed(app: &AppHandle) -> bool {
+    if is_demo(&app.state::<AppState>()) {
+        return true;
+    }
+    system_cast_sound_allowed().unwrap_or(true)
+}
+
 /// System part of "Copy diagnostics".
 pub fn diagnostics(app: &AppHandle) -> String {
     let state = app.state::<AppState>();
@@ -68,15 +77,13 @@ fn is_demo(state: &AppState) -> bool {
 
 /// Sample results so the wizard can be tried without hardware.
 fn demo_system_checks() -> Vec<CheckResult> {
-    let home = NetworkProfile {
-        name: "Demo Home Wi-Fi".into(),
-        interface_alias: "Wi-Fi".into(),
-        category: "Public".into(),
+    let firewall = PowerShellReport {
+        firewall_public: Some(true),
+        ..PowerShellReport::default()
     };
     vec![
         checks::bluetooth_check(Some(true)),
-        checks::network_check(&[home]),
-        checks::firewall_check(Some(true), false),
+        checks::firewall_check(&firewall),
         checks::miracast_check(WifiCapabilities {
             miracast_sink: Some(true),
             wifi_direct_go: Some(true),
@@ -88,6 +95,11 @@ fn demo_system_checks() -> Vec<CheckResult> {
 #[cfg(windows)]
 fn system_checks() -> Vec<CheckResult> {
     budmix_win::setup::SystemReport::collect().checks()
+}
+
+#[cfg(windows)]
+fn system_cast_sound_allowed() -> Option<bool> {
+    budmix_win::setup::cast_sound_allowed()
 }
 
 #[cfg(windows)]
@@ -104,17 +116,19 @@ fn apply(fix: Fix) -> Result<(), String> {
         std::env::current_exe().map_err(|err| format!("Couldn't find BudMix.exe: {err}"))?;
     match fix {
         Fix::OpenSettings { uri } => setup::open_settings(&uri),
-        Fix::MakeNetworkPrivate { network } => {
-            setup::run_fixes(&[FixTask::Network], &network, &program)
-        }
-        Fix::AddFirewallRule => setup::run_fixes(&[FixTask::Firewall], "", &program),
-        Fix::InstallWirelessDisplay => setup::run_fixes(&[FixTask::WirelessDisplay], "", &program),
+        Fix::AddFirewallRule => setup::run_fixes(&[FixTask::Firewall], &program),
+        Fix::InstallWirelessDisplay => setup::run_fixes(&[FixTask::WirelessDisplay], &program),
     }
 }
 
 #[cfg(not(windows))]
 fn system_checks() -> Vec<CheckResult> {
     demo_system_checks()
+}
+
+#[cfg(not(windows))]
+fn system_cast_sound_allowed() -> Option<bool> {
+    None
 }
 
 #[cfg(not(windows))]

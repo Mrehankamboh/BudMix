@@ -4,6 +4,7 @@
 //! Pure logic, compiled on every OS so it is unit-tested everywhere. The
 //! Windows probing that feeds it lives in `setup.rs`.
 
+use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -12,7 +13,6 @@ pub enum CheckId {
     Bluetooth,
     BudsPaired,
     PhonePaired,
-    NetworkPrivate,
     Firewall,
     Miracast,
     WirelessDisplay,
@@ -38,10 +38,8 @@ pub enum CheckStatus {
 pub enum Fix {
     /// Opens a page of Windows Settings, e.g. `ms-settings:bluetooth`.
     OpenSettings { uri: String },
-    /// Marks this Wi-Fi network Private (needs admin, one prompt).
-    MakeNetworkPrivate { network: String },
-    /// Allows BudMix through Windows Firewall on Private networks only
-    /// (needs admin, one prompt).
+    /// Lets the casting phone's sound through Windows Firewall, for BudMix
+    /// only (needs admin, one prompt).
     AddFirewallRule,
     /// Installs Windows' Wireless Display receiver (needs admin and
     /// internet, one time).
@@ -170,84 +168,86 @@ pub struct NetworkProfile {
 /// ConvertTo-Json`, which is a single object for one connection and an array
 /// for several.
 pub fn parse_network_profiles(json: &str) -> Vec<NetworkProfile> {
+    one_or_many(json)
+}
+
+/// ConvertTo-Json prints one item as an object and several as an array.
+fn one_or_many<T: DeserializeOwned>(json: &str) -> Vec<T> {
     let json = json.trim();
     if json.is_empty() {
         return Vec::new();
     }
-    serde_json::from_str::<Vec<NetworkProfile>>(json)
-        .or_else(|_| serde_json::from_str::<NetworkProfile>(json).map(|profile| vec![profile]))
+    serde_json::from_str::<Vec<T>>(json)
+        .or_else(|_| serde_json::from_str::<T>(json).map(|item| vec![item]))
         .unwrap_or_default()
 }
 
-fn is_wifi(profile: &NetworkProfile) -> bool {
-    let alias = profile.interface_alias.to_lowercase();
-    alias.contains("wi-fi")
-        || alias.contains("wifi")
-        || alias.contains("wlan")
-        || alias.contains("wireless")
+/// One Windows Firewall rule for BudMix.exe, whoever made it: BudMix, or
+/// Windows after its own prompt.
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "PascalCase")]
+pub struct FirewallRule {
+    pub direction: String,
+    pub action: String,
+    /// "Public", "Private, Public", "Any", ...
+    pub profile: String,
+    pub enabled: String,
 }
 
-pub fn network_check(profiles: &[NetworkProfile]) -> CheckResult {
-    let wifi = profiles.iter().find(|profile| is_wifi(profile));
-    let Some(profile) = wifi.or(profiles.first()) else {
-        return CheckResult::new(
-            CheckId::NetworkPrivate,
-            CheckStatus::Warning,
-            "Not connected to a network",
-            "Connect to your home Wi-Fi. Casting itself uses Wi-Fi Direct, but Windows only \
-             allows the receiver on networks you trust.",
-        );
-    };
-    if profile.category.eq_ignore_ascii_case("Public") {
-        return CheckResult::new(
-            CheckId::NetworkPrivate,
-            CheckStatus::Problem,
-            "Network is Public",
-            format!(
-                "\"{}\" is set to Public, so BudMix keeps the receiver off. If this is your \
-                 home network, make it Private. Never do this on cafe or airport Wi-Fi.",
-                profile.name
-            ),
-        )
-        .with_fix(Fix::MakeNetworkPrivate {
-            network: profile.name.clone(),
-        });
+impl FirewallRule {
+    /// The rule decides about traffic coming in on a Public network.
+    fn covers_cast_link(&self) -> bool {
+        self.direction == "Inbound"
+            && self.enabled == "True"
+            && (self.profile == "Any" || self.profile.contains("Public"))
     }
-    CheckResult::new(
-        CheckId::NetworkPrivate,
-        CheckStatus::Ok,
-        "Network is Private",
-        format!("\"{}\" ({})", profile.name, profile.category),
-    )
 }
 
-/// `private_enabled`: Windows Firewall is on for Private networks;
-/// `rule_present`: BudMix's own rule exists.
-pub fn firewall_check(private_enabled: Option<bool>, rule_present: bool) -> CheckResult {
-    if rule_present {
-        return CheckResult::new(
+/// Can a casting phone's sound reach BudMix? It arrives over a direct Wi-Fi
+/// link that Windows treats as Public, so only that profile counts. `None`
+/// when Windows did not say.
+pub fn cast_sound_allowed(report: &PowerShellReport) -> Option<bool> {
+    if !report.firewall_public? {
+        return Some(true);
+    }
+    let mut rules = report.rules.iter().filter(|rule| rule.covers_cast_link());
+    // A Block rule beats every Allow rule.
+    let blocked = rules.clone().any(|rule| rule.action == "Block");
+    Some(!blocked && rules.any(|rule| rule.action == "Allow"))
+}
+
+pub fn firewall_check(report: &PowerShellReport) -> CheckResult {
+    match (cast_sound_allowed(report), report.firewall_public) {
+        (Some(true), Some(false)) => CheckResult::new(
             CheckId::Firewall,
             CheckStatus::Ok,
-            "Firewall allows BudMix on Private networks",
+            "Firewall is off for Public networks",
+            "Nothing blocks the phone's sound. Adding the rule anyway keeps it working if you \
+             turn the firewall on.",
+        )
+        .with_fix(Fix::AddFirewallRule),
+        (Some(true), _) => CheckResult::new(
+            CheckId::Firewall,
+            CheckStatus::Ok,
+            "Firewall lets the phone's sound through",
             "",
-        );
-    }
-    if private_enabled == Some(false) {
-        return CheckResult::new(
+        ),
+        (Some(false), _) => CheckResult::new(
             CheckId::Firewall,
-            CheckStatus::Ok,
-            "Firewall is off for Private networks",
-            "Nothing blocks BudMix. Adding the rule anyway keeps working if you turn it on.",
+            CheckStatus::Warning,
+            "Firewall blocks the sound of a casting phone",
+            "A cast would connect without sound. Allow adds a rule for BudMix only, for devices \
+             on the same local network, also on public Wi-Fi. Bluetooth doesn't need this.",
         )
-        .with_fix(Fix::AddFirewallRule);
+        .with_fix(Fix::AddFirewallRule),
+        (None, _) => CheckResult::new(
+            CheckId::Firewall,
+            CheckStatus::Unknown,
+            "Firewall state unknown",
+            "Windows did not report it. If a cast connects without sound, press Allow.",
+        )
+        .with_fix(Fix::AddFirewallRule),
     }
-    CheckResult::new(
-        CheckId::Firewall,
-        CheckStatus::Warning,
-        "Firewall rule for BudMix missing",
-        "Allow BudMix on Private networks only, so the phone's cast can reach it.",
-    )
-    .with_fix(Fix::AddFirewallRule)
 }
 
 /// What `netsh wlan show wirelesscapabilities` says about Miracast.
@@ -326,8 +326,10 @@ pub fn wireless_display_check(installed: Option<bool>) -> CheckResult {
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct PowerShellReport {
     pub networks: Vec<NetworkProfile>,
-    pub firewall_private: Option<bool>,
-    pub rule_present: bool,
+    /// Windows Firewall is on for Public networks.
+    pub firewall_public: Option<bool>,
+    /// Every firewall rule for BudMix.exe.
+    pub rules: Vec<FirewallRule>,
 }
 
 #[derive(Deserialize)]
@@ -336,12 +338,22 @@ struct RawReport {
     #[serde(default)]
     networks: Option<serde_json::Value>,
     #[serde(default)]
-    firewall_private: Option<String>,
+    firewall_public: Option<String>,
     #[serde(default)]
-    rule_count: Option<u32>,
+    rules: Option<serde_json::Value>,
 }
 
-/// Parses `{ "Networks": [...], "FirewallPrivate": "True", "RuleCount": 1 }`.
+/// What the setup check asks PowerShell, for this BudMix.exe.
+pub fn report_script(program: &str) -> String {
+    const SCRIPT: &str = "\
+$n = Get-NetConnectionProfile | Select-Object Name,InterfaceAlias,@{n='Category';e={\"$($_.NetworkCategory)\"}}
+$f = (Get-NetFirewallProfile -Profile Public).Enabled
+$r = Get-NetFirewallApplicationFilter -Program __PROGRAM__ -ErrorAction SilentlyContinue | Get-NetFirewallRule | Select-Object @{n='Direction';e={\"$($_.Direction)\"}},@{n='Action';e={\"$($_.Action)\"}},@{n='Profile';e={\"$($_.Profile)\"}},@{n='Enabled';e={\"$($_.Enabled)\"}}
+[pscustomobject]@{ Networks = @($n); FirewallPublic = \"$f\"; Rules = @($r) } | ConvertTo-Json -Depth 4 -Compress";
+    SCRIPT.replace("__PROGRAM__", &quoted(program))
+}
+
+/// Parses `{ "Networks": [...], "FirewallPublic": "True", "Rules": [...] }`.
 pub fn parse_powershell_report(json: &str) -> PowerShellReport {
     let Ok(raw) = serde_json::from_str::<RawReport>(json.trim()) else {
         return PowerShellReport::default();
@@ -351,12 +363,15 @@ pub fn parse_powershell_report(json: &str) -> PowerShellReport {
             .networks
             .map(|value| parse_network_profiles(&value.to_string()))
             .unwrap_or_default(),
-        firewall_private: match raw.firewall_private.as_deref() {
+        firewall_public: match raw.firewall_public.as_deref() {
             Some("True") => Some(true),
             Some("False") => Some(false),
             _ => None,
         },
-        rule_present: raw.rule_count.unwrap_or(0) > 0,
+        rules: raw
+            .rules
+            .map(|value| one_or_many(&value.to_string()))
+            .unwrap_or_default(),
     }
 }
 
@@ -366,7 +381,6 @@ pub const FIX_SCRIPT: &str = include_str!("../../../scripts/fix-prereqs.ps1");
 /// The parts of [`FIX_SCRIPT`] a fix runs.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum FixTask {
-    Network,
     Firewall,
     WirelessDisplay,
 }
@@ -374,7 +388,6 @@ pub enum FixTask {
 impl FixTask {
     fn name(self) -> &'static str {
         match self {
-            FixTask::Network => "network",
             FixTask::Firewall => "firewall",
             FixTask::WirelessDisplay => "wirelessdisplay",
         }
@@ -387,12 +400,11 @@ fn quoted(value: &str) -> String {
 }
 
 /// The PowerShell text that runs [`FIX_SCRIPT`] with these arguments.
-pub fn fix_invocation(tasks: &[FixTask], network: &str, program: &str) -> String {
+pub fn fix_invocation(tasks: &[FixTask], program: &str) -> String {
     let tasks: Vec<&str> = tasks.iter().map(|task| task.name()).collect();
     format!(
-        "& {{\n{FIX_SCRIPT}\n}} -Tasks {} -Network {} -Program {}",
+        "& {{\n{FIX_SCRIPT}\n}} -Tasks {} -Program {}",
         quoted(&tasks.join(",")),
-        quoted(network),
         quoted(program)
     )
 }
@@ -424,19 +436,99 @@ mod tests {
     #[test]
     fn parses_the_powershell_report() {
         let report = parse_powershell_report(
-            r#"{"Networks":[{"Name":"Home Wi-Fi","InterfaceAlias":"Wi-Fi","Category":"Public"}],"FirewallPrivate":"True","RuleCount":0}"#,
+            r#"{"Networks":[{"Name":"Home Wi-Fi","InterfaceAlias":"Wi-Fi","Category":"Public"}],"FirewallPublic":"True","Rules":[]}"#,
         );
         assert_eq!(report.networks.len(), 1);
-        assert_eq!(report.firewall_private, Some(true));
-        assert!(!report.rule_present);
+        assert_eq!(report.firewall_public, Some(true));
+        assert!(report.rules.is_empty());
         assert_eq!(
             parse_powershell_report("not json"),
             PowerShellReport::default()
         );
-        let report =
-            parse_powershell_report(r#"{"FirewallPrivate":"NotConfigured","RuleCount":2}"#);
-        assert_eq!(report.firewall_private, None);
-        assert!(report.rule_present);
+        let report = parse_powershell_report(
+            r#"{"FirewallPublic":"NotConfigured","Rules":{"Direction":"Inbound","Action":"Allow","Profile":"Public","Enabled":"True"}}"#,
+        );
+        assert_eq!(report.firewall_public, None);
+        assert_eq!(
+            report.rules,
+            vec![rule("Inbound", "Allow", "Public", "True")]
+        );
+    }
+
+    fn rule(direction: &str, action: &str, profile: &str, enabled: &str) -> FirewallRule {
+        FirewallRule {
+            direction: direction.into(),
+            action: action.into(),
+            profile: profile.into(),
+            enabled: enabled.into(),
+        }
+    }
+
+    fn firewall_on(rules: Vec<FirewallRule>) -> PowerShellReport {
+        PowerShellReport {
+            firewall_public: Some(true),
+            rules,
+            ..PowerShellReport::default()
+        }
+    }
+
+    #[test]
+    fn no_rule_blocks_the_cast_sound() {
+        assert_eq!(cast_sound_allowed(&firewall_on(vec![])), Some(false));
+    }
+
+    #[test]
+    fn a_rule_on_the_public_profile_lets_the_sound_through() {
+        for profile in ["Public", "Private, Public", "Any"] {
+            let report = firewall_on(vec![rule("Inbound", "Allow", profile, "True")]);
+            assert_eq!(cast_sound_allowed(&report), Some(true), "{profile}");
+        }
+    }
+
+    #[test]
+    fn rules_that_do_not_reach_the_cast_link_do_not_count() {
+        for rule in [
+            rule("Inbound", "Allow", "Private", "True"),
+            rule("Inbound", "Allow", "Public", "False"),
+            rule("Outbound", "Allow", "Public", "True"),
+        ] {
+            assert_eq!(cast_sound_allowed(&firewall_on(vec![rule])), Some(false));
+        }
+    }
+
+    #[test]
+    fn a_block_rule_beats_an_allow_rule() {
+        let report = firewall_on(vec![
+            rule("Inbound", "Allow", "Public", "True"),
+            rule("Inbound", "Block", "Public", "True"),
+        ]);
+        assert_eq!(cast_sound_allowed(&report), Some(false));
+    }
+
+    #[test]
+    fn firewall_off_lets_everything_through() {
+        let report = PowerShellReport {
+            firewall_public: Some(false),
+            rules: vec![rule("Inbound", "Block", "Public", "True")],
+            ..PowerShellReport::default()
+        };
+        assert_eq!(cast_sound_allowed(&report), Some(true));
+    }
+
+    #[test]
+    fn an_unknown_firewall_is_not_a_verdict() {
+        assert_eq!(cast_sound_allowed(&PowerShellReport::default()), None);
+        assert_eq!(
+            firewall_check(&PowerShellReport::default()).status,
+            CheckStatus::Unknown
+        );
+    }
+
+    #[test]
+    fn the_report_script_quotes_the_program() {
+        let script = report_script(r"C:\Sam's apps\budmix.exe");
+        assert!(script.contains(r"-Program 'C:\Sam''s apps\budmix.exe' -ErrorAction"));
+        assert!(!script.contains("__PROGRAM__"));
     }
 
     #[test]
@@ -451,13 +543,12 @@ mod tests {
     #[test]
     fn invocation_quotes_every_argument() {
         let text = fix_invocation(
-            &[FixTask::Network, FixTask::Firewall],
-            "Sam's Wi-Fi",
-            r"C:\Users\me\AppData\Local\BudMix\budmix.exe",
+            &[FixTask::Firewall, FixTask::WirelessDisplay],
+            r"C:\Users\Sam's\AppData\Local\BudMix\budmix.exe",
         );
         assert!(text.starts_with("& {\n<#"));
         assert!(text.ends_with(
-            r"} -Tasks 'network,firewall' -Network 'Sam''s Wi-Fi' -Program 'C:\Users\me\AppData\Local\BudMix\budmix.exe'"
+            r"} -Tasks 'firewall,wirelessdisplay' -Program 'C:\Users\Sam''s\AppData\Local\BudMix\budmix.exe'"
         ));
     }
 
@@ -505,44 +596,20 @@ Wireless Device Capabilities
     }
 
     #[test]
-    fn public_wifi_offers_to_make_it_private() {
-        let profiles = parse_network_profiles(
-            r#"{ "Name": "Home Wi-Fi", "InterfaceAlias": "Wi-Fi", "Category": "Public" }"#,
-        );
-        let check = network_check(&profiles);
-        assert_eq!(check.status, CheckStatus::Problem);
-        assert_eq!(
-            check.fix,
-            Some(Fix::MakeNetworkPrivate {
-                network: "Home Wi-Fi".into()
-            })
-        );
-    }
-
-    #[test]
-    fn the_wifi_connection_decides_over_ethernet() {
-        let profiles = parse_network_profiles(
-            r#"[
-            { "Name": "Office", "InterfaceAlias": "Ethernet", "Category": "Public" },
-            { "Name": "Home", "InterfaceAlias": "Wi-Fi", "Category": "Private" }
-        ]"#,
-        );
-        assert_eq!(network_check(&profiles).status, CheckStatus::Ok);
-    }
-
-    #[test]
-    fn no_network_is_a_warning() {
-        assert_eq!(network_check(&[]).status, CheckStatus::Warning);
-    }
-
-    #[test]
     fn firewall_states() {
-        assert_eq!(firewall_check(Some(true), true).status, CheckStatus::Ok);
-        assert_eq!(firewall_check(Some(true), true).fix, None);
-        let missing = firewall_check(Some(true), false);
+        let allowed = firewall_check(&firewall_on(vec![rule(
+            "Inbound", "Allow", "Public", "True",
+        )]));
+        assert_eq!(allowed.status, CheckStatus::Ok);
+        assert_eq!(allowed.fix, None);
+        let missing = firewall_check(&firewall_on(vec![]));
         assert_eq!(missing.status, CheckStatus::Warning);
         assert_eq!(missing.fix, Some(Fix::AddFirewallRule));
-        assert_eq!(firewall_check(Some(false), false).status, CheckStatus::Ok);
+        let off = PowerShellReport {
+            firewall_public: Some(false),
+            ..PowerShellReport::default()
+        };
+        assert_eq!(firewall_check(&off).status, CheckStatus::Ok);
     }
 
     #[test]
@@ -574,11 +641,8 @@ Wireless Device Capabilities
 
     #[test]
     fn fixes_serialize_with_a_kind_tag() {
-        let json = serde_json::to_string(&Fix::MakeNetworkPrivate {
-            network: "Home".into(),
-        })
-        .unwrap();
-        assert_eq!(json, r#"{"kind":"makeNetworkPrivate","network":"Home"}"#);
+        let json = serde_json::to_string(&Fix::OpenSettings { uri: "x".into() }).unwrap();
+        assert_eq!(json, r#"{"kind":"openSettings","uri":"x"}"#);
         let back: Fix = serde_json::from_str(r#"{"kind":"addFirewallRule"}"#).unwrap();
         assert_eq!(back, Fix::AddFirewallRule);
     }

@@ -73,8 +73,6 @@ function wifiRow(cast: CastStatus | null): SourceRow {
       return { ...base, status: "reconnecting", detail: cast.message ?? "Retrying" };
     case "unsupported":
       return { ...base, status: "error", detail: cast.message ?? "This PC can't receive Miracast" };
-    case "notPrivate":
-      return { ...base, status: "error", detail: "Network is Public: receiver off" };
     case "off":
       return { ...base, status: "off", detail: "Phone connection is set to Bluetooth only" };
   }

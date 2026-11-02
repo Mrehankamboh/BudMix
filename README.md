@@ -49,12 +49,12 @@ Android does not let another device pull sound out of a phone over Wi-Fi by itse
 - **Sources with their own volume**: Buds (master), Laptop, Phone over Wi-Fi, Phone over Bluetooth, each with status (Waiting, Connecting, Playing, Reconnecting, Paused, Error), a slider and mute.
 - **Phone approvals**: a new phone that casts is asked about once (Allow always / Just this time / Refuse); allowed phones are remembered and can be forgotten.
 - **Phone screen window**: a small window shows the cast; hide it anytime, the sound keeps playing.
-- **Setup check** on first start: Bluetooth on, buds and phone paired, network Private, firewall rule (Private networks only), Wi-Fi card Miracast support, the optional Wireless Display fallback, and "Do you hear the beep?". Each problem has a Fix button; fixes that need admin rights ask Windows once.
+- **Setup check** on first start: Bluetooth on, buds and phone paired, firewall rule for the phone's sound, Wi-Fi card Miracast support, the optional Wireless Display fallback, and "Do you hear the beep?". Each problem has a Fix button; fixes that need admin rights ask Windows once.
 - **Call-mode warning**: if an app opens the buds' microphone, Windows drops them to hands-free (HFP) quality; BudMix says so. BudMix itself never opens the microphone.
 - **It just works**: starts with Windows in the tray, auto-reconnects buds (1 s … 30 s), retries the phone (5 s … 60 s) and the receiver, notices sleep/wake, follows default-output changes, shows "Phone audio is now in your buds".
 - **Diagnostics**: Copy diagnostics (Windows build, Bluetooth, networks and their profile, firewall, Miracast support, audio endpoints, receiver state). Logs in `%LOCALAPPDATA%\io.github.mrehankamboh.budmix\logs`.
 - **Demo mode** (`BUDMIX_DEMO=1`): fictional buds and phones, including a phone that starts casting, to try the UI without hardware.
-- **Private**: no account, no telemetry, nothing sent to the internet. The receiver runs on Private networks only.
+- **Private**: no account, no telemetry, nothing sent to the internet. A new phone can only play after you allow it.
 
 ## Requirements
 
@@ -89,10 +89,9 @@ More commands (tests, demo mode, the hardware probes): [docs/DEVELOPMENT.md](doc
 
 | Problem | What to do |
 |---|---|
-| "Network is Public" | Setup check → **Make Private (admin)**, only on your home Wi-Fi |
 | The phone doesn't list BudMix | Keep Wi-Fi on on both; Cast → ⋮ → Enable wireless display; run the setup check; or use Bluetooth |
 | "This laptop's Wi-Fi card cannot receive Miracast" | The phone uses Bluetooth instead (Auto does this by itself) |
-| "Firewall rule for BudMix missing" | Setup check → **Allow (admin)** (Private networks only) |
+| The cast connects but there is no sound | BudMix opens by itself and asks: press **Allow sound** and say Yes to Windows. It's also in the setup check |
 | "Buds switched to call mode (HFP)" | An app uses the buds' mic: end the call or pick another microphone |
 | "Phone not paired" | Windows Settings → Bluetooth & devices → Add device |
 | Phone paired but "Windows won't take its audio" | Remove the phone in Bluetooth settings and pair again from the laptop |
@@ -105,7 +104,6 @@ Then **Copy diagnostics** and include it in an issue.
 - **The phone must tap Cast** for the Wi-Fi path; Android allows nothing else without an app.
 - **Some Wi-Fi cards cannot receive Miracast**; then the phone uses Bluetooth.
 - **DRM apps** (e.g. Netflix) may block casting.
-- **Public Wi-Fi is not supported** for the receiver, on purpose.
 - **Phone sounds**: while casting, Android sends media to the laptop; ringtones and notifications may still play on the phone.
 - **One radio**: buds and a Bluetooth phone share the laptop's Bluetooth radio, which can stutter on some laptops. The Wi-Fi path leaves Bluetooth to the buds.
 - **The default output is switched with `IPolicyConfig`**, an undocumented Windows interface also used by the Sound control panel and EarTrumpet. If a Windows update breaks it, BudMix shows the error. The "communications" default is left alone so call apps don't drop the buds to HFP.
@@ -122,7 +120,7 @@ crates/
                        per-source volume, settings, demo backends
   budmix-win/        Windows: Bluetooth endpoints, connect/disconnect, phone audio,
                        default output, call-mode check, test tone, volumes, setup checks
-  budmix-miracast/   Miracast receiver, Private-network check, phone screen window;
+  budmix-miracast/   Miracast receiver, phone screen window;
                        examples/cast-probe.rs
 apps/desktop/          Tauri 2 app: tray, dock, settings, setup check (React UI in src/)
 scripts/               fix-prereqs.ps1 (the one-time admin fixes)

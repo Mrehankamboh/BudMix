@@ -2,13 +2,14 @@
 //! runtime (Bluetooth) and the audio runtime, plus the notification.
 
 use std::sync::{Mutex, PoisonError};
+use std::thread;
 
 use budmix_core::{BridgeState, CastPhase, CastStatus, PhoneMode, SourceView};
 use tauri::{AppHandle, Emitter, Manager};
 use tauri_plugin_notification::NotificationExt;
 
 use crate::state::AppState;
-use crate::{CAST_CHANGED, SOURCES_CHANGED, system, tray};
+use crate::{CAST_CHANGED, SOURCES_CHANGED, setup, system, tray};
 
 /// The Bluetooth phone list changed.
 pub fn sources_changed(app: &AppHandle, views: &[SourceView]) {
@@ -55,12 +56,20 @@ pub fn cast_changed(app: &AppHandle, status: &CastStatus, last_phase: &Mutex<Cas
     let previous = std::mem::replace(&mut *last, status.cast.phase);
     drop(last);
     let phone = status.cast.phone.as_deref().unwrap_or("Phone");
+    if matches!(previous, CastPhase::Idle | CastPhase::NeedsApproval)
+        && matches!(
+            status.cast.phase,
+            CastPhase::Connecting | CastPhase::Playing
+        )
+    {
+        ask_about_blocked_sound(app);
+    }
     match (previous, status.cast.phase) {
         (from, CastPhase::Playing) if from != CastPhase::Playing => {
             notify(
                 app,
-                "Phone audio is now in your buds",
-                &format!("{phone} is casting over Wi-Fi."),
+                &format!("{phone} is casting"),
+                "Its sound comes to your buds over Wi-Fi.",
             );
         }
         (from, CastPhase::NeedsApproval) if from != CastPhase::NeedsApproval => {
@@ -74,6 +83,30 @@ pub fn cast_changed(app: &AppHandle, status: &CastStatus, last_phase: &Mutex<Cas
         _ => {}
     }
     tray::update(app);
+}
+
+/// A cast starts: if the firewall would stop its sound, opens the dock, where
+/// the user can allow it. The check takes a second, so it gets its own thread.
+fn ask_about_blocked_sound(app: &AppHandle) {
+    let app = app.clone();
+    let spawned = thread::Builder::new()
+        .name("budmix-cast-sound".into())
+        .spawn(move || {
+            if setup::cast_sound_allowed(&app) {
+                return;
+            }
+            log::info!("the firewall blocks the cast's sound; asking the user");
+            notify(
+                &app,
+                "One step for the phone's sound",
+                "Windows Firewall is blocking it. Open BudMix and press Allow sound.",
+            );
+            crate::dock::keep_open(&app, true);
+            crate::dock::show(&app);
+        });
+    if let Err(err) = spawned {
+        log::warn!("could not check the firewall: {err}");
+    }
 }
 
 /// The cast allowlist changed (a phone was allowed or forgotten).

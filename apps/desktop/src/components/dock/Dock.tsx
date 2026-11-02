@@ -25,6 +25,7 @@ import type { AudioView, CastStatus, DeviceView, SourceView } from "../../lib/ty
 import { useBudMix } from "../../lib/useBudMix";
 import { SourcesPanel } from "../SourcesPanel";
 import { CastBanner } from "./CastBanner";
+import { CastSoundPrompt } from "./CastSoundPrompt";
 import { ExpandRow } from "./ExpandRow";
 import { FlowHero } from "./FlowHero";
 import { MoreMenu } from "./MoreMenu";
@@ -183,6 +184,7 @@ export function Dock() {
       )}
 
       <CastBanner cast={cast} onApprove={approvePhone} onReject={rejectPhone} onShowVideo={showCastVideo} />
+      <CastSoundPrompt cast={cast} />
 
       <section className="dock-card" aria-label="Status">
         <div className="dock-card__head">

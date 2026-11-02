@@ -62,9 +62,8 @@ cargo run -p budmix-win --example bt-audio -- list
 | M2-1 | First start of the app | The settings window opens with "Welcome: let's check this PC" | |
 | M2-2 | Bluetooth row | "Bluetooth is on". Turn Bluetooth off and click **Check again**: "Bluetooth is off" with **Open settings** | |
 | M2-3 | Buds / phone rows | "Buds paired: TWS" and "Phone paired: Infinix HOT 11 Play" | |
-| M2-4 | Network row on the Public home Wi-Fi | "Network is Public" with **Make Private (admin)**. Click it, say Yes to Windows: the row turns "Network is Private" | |
 | M2-5 | Cancel the admin prompt instead | "The admin prompt was cancelled, so nothing changed." | |
-| M2-6 | Firewall row | **Allow (admin)** adds the rule; the row turns OK. `wf.msc` shows "BudMix (Private networks)", Private profile only | |
+| M2-6 | Firewall row | **Allow (admin)** adds the rules; the row turns OK. `wf.msc` shows "BudMix (Private networks)" (Private) and "BudMix (phone cast link)" (Public, local subnet only) | |
 | M2-7 | Miracast row | "Wi-Fi card can receive Miracast" (Intel AC 8265) | |
 | M2-8 | Test beep row | **Play beep** is heard in the buds; **Yes** marks it OK | |
 | M2-9 | **Done** / **Finish later** | Next start opens the dock, not the wizard; the check stays available in settings | |
@@ -72,19 +71,20 @@ cargo run -p budmix-win --example bt-audio -- list
 
 ## M3: phone over Wi-Fi inside the app
 
-Start the app (`pnpm tauri dev` in `apps/desktop`, or the installed BudMix). The network must be Private (M2-4).
+Start the app (`pnpm tauri dev` in `apps/desktop`, or the installed BudMix).
 
 | ID | Check | Expected | Result |
 |---|---|---|---|
 | M3-1 | Dock → Sources → "Phone over Wi-Fi" | "Waiting · Ready: tap Cast → "BudMix" on the phone" | |
 | M3-2 | Infinix: Cast → **BudMix** (first time) | Dock opens with "Infinix … wants to play in your buds"; a notification says the same | |
-| M3-3 | **Allow always** | Phone audio plays in the buds; notification "Phone audio is now in your buds"; Sources shows "Infinix (Wi-Fi) · Playing" | |
+| M3-0 | Run a BudMix.exe with no firewall rule yet (new laptop, or a new folder), then cast | The dock opens with "Allow the phone's sound?". **Allow sound**, Yes to Windows: "Sound allowed" and the sound starts without a command. If Windows' own firewall prompt came first and was cancelled, this must still work | |
+| M3-3 | **Allow always** | Phone audio plays in the buds; notification "Infinix is casting"; Sources shows "Infinix (Wi-Fi) · Playing" | |
 | M3-4 | Laptop: play a YouTube video at the same time | Both are heard in the buds, mixed | |
 | M3-5 | Phone screen window | A small window shows the phone screen; closing it hides it and the sound keeps playing; **Show phone screen** brings it back | |
 | M3-6 | Disconnect on the phone, cast again | No question the second time (allowlist); plays at once | |
 | M3-7 | Settings → Sources → Forget the phone, cast again | Asked again | |
 | M3-8 | **Refuse** a cast | The phone disconnects | |
-| M3-9 | Turn the network Public (Windows Settings) | Within ~10 s the receiver stops; Sources says "Network is Public: receiver off" | |
+| M3-9 | Cast on a Public network and on a network this laptop has never seen | The receiver stays ready and the cast works, with no change to the network |
 
 ## M4: Bluetooth fallback, Auto switching, volumes
 

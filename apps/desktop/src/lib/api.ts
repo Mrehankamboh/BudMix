@@ -59,6 +59,10 @@ export const api = {
   setupChecks: () => invoke<CheckResult[]>("setup_checks"),
   /** Runs the fix behind a check's button; admin fixes show one Windows prompt. */
   runFix: (fix: Fix) => invoke<void>("run_fix", { fix }),
+  /** Can a casting phone's sound get past Windows Firewall? */
+  castSoundAllowed: () => invoke<boolean>("cast_sound_allowed"),
+  /** Keeps the dock open when it loses focus, while it waits for an answer. */
+  dockKeepOpen: (keep: boolean) => invoke<void>("dock_keep_open", { keep }),
   /** What BudMix and Windows see, as text for a bug report. */
   diagnostics: () => invoke<string>("diagnostics"),
   /** Opens the full window (settings) and closes the dock. */

@@ -169,6 +169,20 @@ pub async fn run_fix(app: AppHandle, fix: Fix) -> Result<(), String> {
         .map_err(|err| err.to_string())?
 }
 
+/// Can a casting phone's sound get past Windows Firewall?
+#[tauri::command]
+pub async fn cast_sound_allowed(app: AppHandle) -> Result<bool, String> {
+    tauri::async_runtime::spawn_blocking(move || setup::cast_sound_allowed(&app))
+        .await
+        .map_err(|err| err.to_string())
+}
+
+/// Keeps the dock open when it loses focus, while it waits for an answer.
+#[tauri::command]
+pub fn dock_keep_open(app: AppHandle, keep: bool) {
+    crate::dock::keep_open(&app, keep);
+}
+
 /// Phone audio over Wi-Fi: receiver, casting phone, approvals.
 #[tauri::command]
 pub fn cast_state(state: State<'_, AppState>) -> Option<CastStatus> {

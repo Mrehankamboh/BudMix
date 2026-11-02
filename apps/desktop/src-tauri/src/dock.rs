@@ -99,6 +99,7 @@ pub fn place(anchor: Option<PxRect>, work: PxRect, size: (i32, i32), margin: i32
 pub struct DockState {
     anchor: Mutex<Option<PxRect>>,
     hidden_at: Mutex<Option<Instant>>,
+    keep_open: Mutex<bool>,
 }
 
 fn lock<T>(mutex: &Mutex<T>) -> MutexGuard<'_, T> {
@@ -169,12 +170,18 @@ pub fn hide(app: &AppHandle) {
     }
 }
 
-/// The dock lost focus: close it like a flyout, unless pinned.
+/// The dock lost focus: close it like a flyout, unless pinned or it waits for
+/// an answer (the Windows admin prompt takes focus, too).
 pub fn focus_lost(app: &AppHandle) {
     let pinned = std::env::var(PINNED_ENV).is_ok_and(|value| value == "1");
-    if !pinned {
+    if !pinned && !*lock(&app.state::<DockState>().keep_open) {
         hide(app);
     }
+}
+
+/// While `keep` is on, losing focus doesn't close the dock.
+pub fn keep_open(app: &AppHandle, keep: bool) {
+    *lock(&app.state::<DockState>().keep_open) = keep;
 }
 
 /// The page reports its content height so the dock fits it exactly.

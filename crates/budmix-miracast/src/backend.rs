@@ -1,5 +1,5 @@
-//! [`CastBackend`] for Windows: the built-in Miracast receiver, the network
-//! check and the video window.
+//! [`CastBackend`] for Windows: the built-in Miracast receiver and the video
+//! window.
 
 use std::sync::{Mutex, MutexGuard, PoisonError};
 
@@ -7,7 +7,7 @@ use budmix_core::{CastBackend, CastEvent, CastEvents, Level, StartOutcome};
 
 use crate::probe::{Listening, Verdict};
 use crate::video::VideoWindow;
-use crate::{Receiver, ReceiverEvent, ReceiverOptions, network};
+use crate::{Receiver, ReceiverEvent, ReceiverOptions};
 
 fn lock<T>(mutex: &Mutex<T>) -> MutexGuard<'_, T> {
     mutex.lock().unwrap_or_else(PoisonError::into_inner)
@@ -34,10 +34,6 @@ impl MiracastBackend {
 }
 
 impl CastBackend for MiracastBackend {
-    fn network_private(&self) -> Option<bool> {
-        network::connected_networks_private()
-    }
-
     fn start(&self, events: CastEvents) -> StartOutcome {
         let listener = move |event: ReceiverEvent| {
             log::info!("Miracast receiver: {event:?}");

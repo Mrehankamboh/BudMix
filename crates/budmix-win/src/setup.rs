@@ -20,12 +20,6 @@ const CREATE_NO_WINDOW: u32 = 0x0800_0000;
 /// What UAC returns when the user says No.
 const ERROR_CANCELLED: i32 = 1223;
 
-const REPORT_SCRIPT: &str = "\
-$n = Get-NetConnectionProfile | Select-Object Name,InterfaceAlias,@{n='Category';e={\"$($_.NetworkCategory)\"}}
-$f = (Get-NetFirewallProfile -Profile Private).Enabled
-$r = @(Get-NetFirewallRule -DisplayName 'BudMix (Private networks)' -ErrorAction SilentlyContinue).Count
-[pscustomobject]@{ Networks = @($n); FirewallPrivate = \"$f\"; RuleCount = $r } | ConvertTo-Json -Depth 4 -Compress";
-
 /// Where Windows keeps the Wireless Display receiver app once installed.
 const WIRELESS_DISPLAY_DIR: &str = r"C:\Windows\SystemApps\Microsoft.PPIProjection_cw5n1h2txyewy";
 
@@ -43,9 +37,7 @@ impl SystemReport {
     pub fn collect() -> Self {
         Self {
             bluetooth_on: bluetooth_radio_on(),
-            powershell: powershell(REPORT_SCRIPT)
-                .map(|json| checks::parse_powershell_report(&json))
-                .unwrap_or_default(),
+            powershell: powershell_report(),
             wifi: run(Command::new("netsh").args(["wlan", "show", "wirelesscapabilities"]))
                 .map(|text| checks::parse_wireless_capabilities(&text))
                 .unwrap_or_default(),
@@ -57,11 +49,7 @@ impl SystemReport {
     pub fn checks(&self) -> Vec<CheckResult> {
         vec![
             checks::bluetooth_check(self.bluetooth_on),
-            checks::network_check(&self.powershell.networks),
-            checks::firewall_check(
-                self.powershell.firewall_private,
-                self.powershell.rule_present,
-            ),
+            checks::firewall_check(&self.powershell),
             checks::miracast_check(self.wifi),
             checks::wireless_display_check(self.wireless_display),
         ]
@@ -91,8 +79,10 @@ impl SystemReport {
                 }
             ),
             format!(
-                "Firewall (Private): {:?} · BudMix rule: {}",
-                self.powershell.firewall_private, self.powershell.rule_present
+                "Firewall (Public): {:?} · BudMix rules: {} · cast sound allowed: {:?}",
+                self.powershell.firewall_public,
+                self.powershell.rules.len(),
+                checks::cast_sound_allowed(&self.powershell)
             ),
             format!(
                 "Miracast sink: {:?} · Wi-Fi Direct GO: {:?}",
@@ -102,6 +92,19 @@ impl SystemReport {
         ]
         .join("\n")
     }
+}
+
+/// Can a casting phone's sound reach this BudMix.exe? `None` when Windows did
+/// not say. Takes about a second.
+pub fn cast_sound_allowed() -> Option<bool> {
+    checks::cast_sound_allowed(&powershell_report())
+}
+
+fn powershell_report() -> PowerShellReport {
+    let program = std::env::current_exe().unwrap_or_default();
+    powershell(&checks::report_script(&program.to_string_lossy()))
+        .map(|json| checks::parse_powershell_report(&json))
+        .unwrap_or_default()
 }
 
 /// `Some(true)` if a Bluetooth radio is on, `Some(false)` if all are off,
@@ -138,8 +141,8 @@ pub fn open_settings(uri: &str) -> Result<(), String> {
 }
 
 /// Runs the admin fixes with one UAC prompt and waits for them.
-pub fn run_fixes(tasks: &[FixTask], network: &str, program: &Path) -> Result<(), String> {
-    let encoded = encode_command(&fix_invocation(tasks, network, &program.to_string_lossy()));
+pub fn run_fixes(tasks: &[FixTask], program: &Path) -> Result<(), String> {
+    let encoded = encode_command(&fix_invocation(tasks, &program.to_string_lossy()));
     let elevate = format!(
         "try {{ $p = Start-Process -FilePath powershell.exe -Verb RunAs -Wait -PassThru \
          -WindowStyle Hidden -ArgumentList '-NoProfile -ExecutionPolicy Bypass -EncodedCommand {encoded}'; \

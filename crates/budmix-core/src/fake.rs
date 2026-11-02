@@ -453,7 +453,6 @@ impl AudioBackend for FakeAudioBackend {
 /// phone cast with [`FakeCastBackend::cast`]; demo mode casts "Demo Phone"
 /// a few seconds after the receiver starts.
 pub struct FakeCastBackend {
-    private: bool,
     demo_cast_after: Option<Duration>,
     events: Mutex<Option<CastEvents>>,
     started: AtomicBool,
@@ -462,9 +461,8 @@ pub struct FakeCastBackend {
 }
 
 impl FakeCastBackend {
-    pub fn new(private: bool) -> Self {
+    pub fn new() -> Self {
         Self {
-            private,
             demo_cast_after: None,
             events: Mutex::new(None),
             started: AtomicBool::new(false),
@@ -477,7 +475,7 @@ impl FakeCastBackend {
     pub fn demo() -> Self {
         Self {
             demo_cast_after: Some(Duration::from_secs(6)),
-            ..Self::new(true)
+            ..Self::new()
         }
     }
 
@@ -514,11 +512,13 @@ impl FakeCastBackend {
     }
 }
 
-impl CastBackend for FakeCastBackend {
-    fn network_private(&self) -> Option<bool> {
-        Some(self.private)
+impl Default for FakeCastBackend {
+    fn default() -> Self {
+        Self::new()
     }
+}
 
+impl CastBackend for FakeCastBackend {
     fn start(&self, events: CastEvents) -> StartOutcome {
         *lock(&self.events) = Some(Arc::clone(&events));
         self.started.store(true, Ordering::SeqCst);

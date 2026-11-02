@@ -33,7 +33,7 @@ pub fn watch_for_wake(app: AppHandle) {
                         state.runtime().refresh();
                         state.bridge().refresh();
                         state.audio().refresh();
-                        state.cast().check_network();
+                        state.cast().refresh();
                     }
                 }
                 before = now;

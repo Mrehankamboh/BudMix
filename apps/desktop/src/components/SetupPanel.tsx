@@ -31,8 +31,6 @@ export function fixLabel(fix: Fix): string {
   switch (fix.kind) {
     case "openSettings":
       return "Open settings";
-    case "makeNetworkPrivate":
-      return "Make Private (admin)";
     case "addFirewallRule":
       return "Allow (admin)";
     case "installWirelessDisplay":

@@ -60,7 +60,6 @@ describe("sourceRows", () => {
   });
 
   it("explains why the receiver is off", () => {
-    expect(sourceRows(buds, audio, { ...cast, receiver: "notPrivate" }, [])[2]?.detail).toMatch(/Public/);
     expect(sourceRows(buds, audio, { ...cast, receiver: "off", mode: "bluetoothOnly" }, [])[2]?.status).toBe("off");
     expect(
       sourceRows(buds, audio, { ...cast, receiver: "unsupported", message: "No Miracast here" }, [])[2],

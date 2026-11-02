@@ -1952,7 +1952,8 @@ button {
   font-weight: 600;
 }
 
-.cast-banner__pin {
+.cast-banner__pin,
+.cast-banner__note {
   margin: 0;
   color: var(--text-2);
 }

@@ -4,6 +4,7 @@
 //! ```text
 //! cargo run -p budmix-miracast --example cast-probe
 //! cargo run -p budmix-miracast --example cast-probe -- --name "My Laptop" --pin
+//! cargo run -p budmix-miracast --example cast-probe -- --phones 3 --seconds 180
 //! ```
 
 #[cfg(not(windows))]
@@ -33,6 +34,7 @@ fn main() {
         auto_play: true,
         ..ReceiverOptions::default()
     };
+    let mut seconds = None;
     let mut args = std::env::args().skip(1);
     while let Some(arg) = args.next() {
         match arg.as_str() {
@@ -41,6 +43,14 @@ fn main() {
                 None => usage(),
             },
             "--pin" => options.require_pin = true,
+            "--phones" => match args.next().and_then(|n| n.parse().ok()) {
+                Some(phones) => options.max_phones = Some(phones),
+                None => usage(),
+            },
+            "--seconds" => match args.next().and_then(|n| n.parse().ok()) {
+                Some(limit) => seconds = Some(limit),
+                None => usage(),
+            },
             _ => usage(),
         }
     }
@@ -86,9 +96,17 @@ fn main() {
     println!("{} verdict: {:?}", stamp(), receiver.verdict());
     println!("  {}", receiver.verdict().explain());
     println!();
-    println!("Keep this window open and cast from the phone. Press Enter to stop.");
-    let mut line = String::new();
-    let _ = std::io::stdin().read_line(&mut line);
+    match seconds {
+        Some(limit) => {
+            println!("Keep this window open and cast from the phone. Stops after {limit} s.");
+            std::thread::sleep(std::time::Duration::from_secs(limit));
+        }
+        None => {
+            println!("Keep this window open and cast from the phone. Press Enter to stop.");
+            let mut line = String::new();
+            let _ = std::io::stdin().read_line(&mut line);
+        }
+    }
     println!("{} last status: {:?}", stamp(), receiver.listening());
     drop(receiver);
     println!("{} Receiver stopped.", stamp());
@@ -96,6 +114,8 @@ fn main() {
 
 #[cfg(windows)]
 fn usage() -> ! {
-    eprintln!("usage: cast-probe [--name <shown on the phone>] [--pin]");
+    eprintln!(
+        "usage: cast-probe [--name <shown on the phone>] [--pin] [--phones <at once>] [--seconds <run time>]"
+    );
     std::process::exit(2);
 }

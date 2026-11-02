@@ -72,6 +72,8 @@ pub fn run() {
             commands::play_test_tone,
             commands::setup_checks,
             commands::run_fix,
+            commands::cast_sound_allowed,
+            commands::dock_keep_open,
             commands::cast_state,
             commands::approve_phone,
             commands::reject_phone,

@@ -15,8 +15,6 @@ use crate::reconnect::ReconnectPolicy;
 pub enum ReceiverState {
     /// Turned off in settings (or "Bluetooth only").
     Off,
-    /// Held off because the network is not Private.
-    NotPrivate,
     Starting,
     /// Phones can find "BudMix" in their Cast list.
     Ready,
@@ -84,7 +82,6 @@ fn same_phone(a: &str, b: &str) -> bool {
 #[derive(Debug)]
 pub struct CastController {
     enabled: bool,
-    private: bool,
     receiver: ReceiverState,
     message: Option<String>,
     phone: Option<String>,
@@ -100,7 +97,6 @@ impl CastController {
     pub fn new(enabled: bool, allowed: Vec<String>, policy: ReconnectPolicy) -> Self {
         Self {
             enabled,
-            private: false,
             receiver: ReceiverState::Off,
             message: None,
             phone: None,
@@ -119,12 +115,6 @@ impl CastController {
             // Turning it on again is how the user asks for another try.
             self.receiver = ReceiverState::Off;
         }
-        self.reconcile(now)
-    }
-
-    /// The connected network's profile changed (or was read for the first time).
-    pub fn set_private(&mut self, private: bool, now: Instant) -> Vec<CastAction> {
-        self.private = private;
         self.reconcile(now)
     }
 
@@ -271,24 +261,10 @@ impl CastController {
             self.receiver,
             ReceiverState::Starting | ReceiverState::Ready
         );
-        if !self.enabled || !self.private {
+        if !self.enabled {
             self.retry_at = None;
             self.failures = 0;
-            let idle = if self.enabled {
-                ReceiverState::NotPrivate
-            } else {
-                ReceiverState::Off
-            };
-            if self.receiver != ReceiverState::Unsupported || !self.enabled {
-                self.receiver = idle;
-            }
-            if !self.private && self.enabled {
-                self.message = Some(
-                    "The network is not Private, so the receiver is off. Mark your home Wi-Fi \
-                     Private in the setup check."
-                        .into(),
-                );
-            }
+            self.receiver = ReceiverState::Off;
             if running {
                 self.end_cast();
                 return vec![CastAction::StopReceiver];
@@ -296,7 +272,7 @@ impl CastController {
             return Vec::new();
         }
         match self.receiver {
-            ReceiverState::Off | ReceiverState::NotPrivate => {
+            ReceiverState::Off => {
                 self.message = None;
                 self.receiver = ReceiverState::Starting;
                 vec![CastAction::StartReceiver]
@@ -324,30 +300,10 @@ mod tests {
             allowed.iter().map(|name| (*name).to_owned()).collect(),
             receiver_retry_policy(),
         );
-        assert_eq!(c.set_private(true, now), vec![CastAction::StartReceiver]);
+        assert_eq!(c.tick(now), vec![CastAction::StartReceiver]);
         c.start_finished(StartOutcome::Ready, now);
         assert_eq!(c.view().receiver, ReceiverState::Ready);
         (c, now)
-    }
-
-    #[test]
-    fn waits_for_a_private_network() {
-        let now = Instant::now();
-        let mut c = CastController::new(true, Vec::new(), receiver_retry_policy());
-        assert!(c.set_private(false, now).is_empty());
-        assert_eq!(c.view().receiver, ReceiverState::NotPrivate);
-        assert!(c.view().message.unwrap().contains("not Private"));
-        assert_eq!(c.set_private(true, now), vec![CastAction::StartReceiver]);
-        assert_eq!(c.view().receiver, ReceiverState::Starting);
-    }
-
-    #[test]
-    fn going_public_stops_the_receiver_and_the_cast() {
-        let (mut c, now) = ready(&["Infinix HOT 11 Play"]);
-        c.phone_connected("Infinix HOT 11 Play".into(), None);
-        assert_eq!(c.set_private(false, now), vec![CastAction::StopReceiver]);
-        assert_eq!(c.view().phase, CastPhase::Idle);
-        assert!(!c.casting());
     }
 
     #[test]
@@ -432,7 +388,7 @@ mod tests {
     fn failed_starts_are_retried_with_backoff() {
         let now = Instant::now();
         let mut c = CastController::new(true, Vec::new(), receiver_retry_policy());
-        c.set_private(true, now);
+        c.tick(now);
         c.start_finished(StartOutcome::Failed("Wi-Fi is off".into()), now);
         assert_eq!(c.view().receiver, ReceiverState::Failed);
         assert_eq!(c.next_wakeup(), Some(now + Duration::from_secs(5)));
@@ -452,7 +408,7 @@ mod tests {
     fn unsupported_is_not_retried_until_turned_on_again() {
         let now = Instant::now();
         let mut c = CastController::new(true, Vec::new(), receiver_retry_policy());
-        c.set_private(true, now);
+        c.tick(now);
         c.start_finished(StartOutcome::Unsupported("no Miracast".into()), now);
         assert!(c.tick(now + Duration::from_secs(3600)).is_empty());
         assert_eq!(c.next_wakeup(), None);
@@ -479,7 +435,7 @@ mod tests {
     fn a_late_start_result_after_stopping_is_ignored() {
         let now = Instant::now();
         let mut c = CastController::new(true, Vec::new(), receiver_retry_policy());
-        c.set_private(true, now);
+        c.tick(now);
         c.set_enabled(false, now);
         c.start_finished(StartOutcome::Ready, now);
         assert_eq!(c.view().receiver, ReceiverState::Off);

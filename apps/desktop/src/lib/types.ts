@@ -84,7 +84,7 @@ export interface Volumes {
   phoneBluetooth: Level;
 }
 
-export type ReceiverState = "off" | "notPrivate" | "starting" | "ready" | "unsupported" | "failed";
+export type ReceiverState = "off" | "starting" | "ready" | "unsupported" | "failed";
 
 export type CastPhase = "idle" | "needsApproval" | "connecting" | "playing";
 
@@ -107,7 +107,6 @@ export type CheckId =
   | "bluetooth"
   | "budsPaired"
   | "phonePaired"
-  | "networkPrivate"
   | "firewall"
   | "miracast"
   | "wirelessDisplay";
@@ -117,7 +116,6 @@ export type CheckStatus = "ok" | "warning" | "problem" | "optional" | "unknown";
 /** What a check's "Fix" button does. Admin fixes show one Windows prompt. */
 export type Fix =
   | { kind: "openSettings"; uri: string }
-  | { kind: "makeNetworkPrivate"; network: string }
   | { kind: "addFirewallRule" }
   | { kind: "installWirelessDisplay" };
 

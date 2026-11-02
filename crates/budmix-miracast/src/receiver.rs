@@ -36,6 +36,9 @@ pub struct ReceiverOptions {
     /// Play every phone at once, without waiting for [`Receiver::play`]
     /// (used by the `cast-probe` tool).
     pub auto_play: bool,
+    /// Take this many phones at once. `None`: one phone, and a new phone
+    /// replaces the current one.
+    pub max_phones: Option<i32>,
 }
 
 impl Default for ReceiverOptions {
@@ -44,6 +47,7 @@ impl Default for ReceiverOptions {
             friendly_name: "BudMix".to_owned(),
             require_pin: false,
             auto_play: false,
+            max_phones: None,
         }
     }
 }
@@ -85,7 +89,8 @@ type Listener = Arc<dyn Fn(ReceiverEvent) + Send + Sync>;
 /// The current cast: its connections and players, and whether it may play.
 struct Cast {
     connections: Vec<MiracastReceiverConnection>,
-    players: Vec<MediaPlayer>,
+    /// Each player with the name of its phone.
+    players: Vec<(String, MediaPlayer)>,
     /// Players start paused until the app allows the phone (allowlist or
     /// the user's click), see [`Receiver::play`].
     approved: bool,
@@ -110,13 +115,32 @@ impl Default for Cast {
 impl Cast {
     /// Ends the cast's playback; the next phone starts unapproved again.
     fn stop(&mut self) {
-        for player in self.players.drain(..) {
-            if let Err(err) = player.Close() {
-                log::warn!("closing a cast player failed: {err}");
-            }
+        for (_, player) in self.players.drain(..) {
+            close_player(&player);
         }
         self.connections.clear();
         self.approved = self.auto_play;
+    }
+
+    /// One phone left. Others keep playing; the last one ends the cast.
+    fn remove(&mut self, name: &str) {
+        self.connections
+            .retain(|connection| transmitter_name(connection) != name);
+        self.players.retain(|(phone, player)| {
+            if phone == name {
+                close_player(player);
+            }
+            phone != name
+        });
+        if self.connections.is_empty() {
+            self.stop();
+        }
+    }
+}
+
+fn close_player(player: &MediaPlayer) {
+    if let Err(err) = player.Close() {
+        log::warn!("closing a cast player failed: {err}");
     }
 }
 
@@ -186,8 +210,13 @@ impl Receiver {
                 return Err(failure(result, "create a receiver session", err));
             }
         };
-        if let Err(err) = session.SetAllowConnectionTakeover(true) {
+        if let Err(err) = session.SetAllowConnectionTakeover(options.max_phones.is_none()) {
             log::debug!("connection takeover not available: {err}");
+        }
+        if let Some(max) = options.max_phones
+            && let Err(err) = session.SetMaxSimultaneousConnections(max)
+        {
+            log::warn!("can't accept {max} phones at once: {err}");
         }
 
         // Events must be subscribed before the session starts.
@@ -265,7 +294,7 @@ impl Receiver {
     pub fn play(&self) {
         let mut cast = lock(&self.players);
         cast.approved = true;
-        for player in &cast.players {
+        for (_, player) in &cast.players {
             if let Err(err) = player.Play() {
                 log::warn!("starting cast playback failed: {err}");
             }
@@ -290,7 +319,7 @@ impl Receiver {
         let mut cast = lock(&self.players);
         cast.volume = volume.clamp(0.0, 1.0);
         cast.muted = muted;
-        for player in &cast.players {
+        for (_, player) in &cast.players {
             let _ = player.SetVolume(cast.volume);
             let _ = player.SetIsMuted(muted);
         }
@@ -298,7 +327,10 @@ impl Receiver {
 
     /// The player of the current cast, for the video window.
     pub fn player(&self) -> Option<MediaPlayer> {
-        lock(&self.players).players.last().cloned()
+        lock(&self.players)
+            .players
+            .last()
+            .map(|(_, player)| player.clone())
     }
 }
 
@@ -368,7 +400,7 @@ fn subscribe(
                 if cast.approved {
                     player.Play()?;
                 }
-                cast.players.push(player);
+                cast.players.push((name.clone(), player));
                 drop(cast);
                 on_media(ReceiverEvent::StreamStarted { name });
             }
@@ -390,7 +422,7 @@ fn subscribe(
             .and_then(|args| args.Connection())
             .map(|connection| transmitter_name(&connection))
             .unwrap_or_default();
-        lock(&disconnect_players).stop();
+        lock(&disconnect_players).remove(&name);
         on_disconnect(ReceiverEvent::PhoneDisconnected { name });
         Ok(())
     }))?;

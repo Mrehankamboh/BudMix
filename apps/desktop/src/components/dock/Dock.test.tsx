@@ -30,6 +30,8 @@ vi.mock("../../lib/api", () => ({
     playTestTone: vi.fn(),
     setupChecks: vi.fn(),
     runFix: vi.fn(),
+    castSoundAllowed: vi.fn(),
+    dockKeepOpen: vi.fn(),
     castState: vi.fn(),
     onCastChanged: vi.fn(),
     approvePhone: vi.fn(),
@@ -104,6 +106,8 @@ beforeEach(() => {
   mocked.playTestTone.mockResolvedValue(undefined);
   mocked.setupChecks.mockResolvedValue([]);
   mocked.runFix.mockResolvedValue(undefined);
+  mocked.castSoundAllowed.mockResolvedValue(true);
+  mocked.dockKeepOpen.mockResolvedValue(undefined);
   mocked.castState.mockResolvedValue(null);
   mocked.onCastChanged.mockResolvedValue(() => {});
   for (const fn of [

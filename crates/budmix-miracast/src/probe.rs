@@ -72,8 +72,8 @@ pub enum Verdict {
     AccessDenied,
     /// A group policy or MDM setting turned "Projecting to this PC" off.
     DisabledByPolicy,
-    /// Windows paused the receiver, for example on a network it does not
-    /// trust or while the PC is on battery with "only when plugged in".
+    /// Windows paused the receiver, for example while the PC is on battery
+    /// with "only when plugged in".
     TemporarilyDisabled,
     /// Started, but Windows did not report a known state.
     Unknown,
@@ -118,8 +118,8 @@ impl Verdict {
                 "Projecting to this PC is turned off by a policy on this computer."
             }
             Verdict::TemporarilyDisabled => {
-                "Windows paused the receiver. Check that the network is Private and, \
-                 if \"only when plugged in\" is on, that the charger is connected."
+                "Windows paused the receiver. Check that Wi-Fi is on and, if \"only \
+                 when plugged in\" is on, that the charger is connected."
             }
             Verdict::Unknown => {
                 "The receiver started but Windows did not say it is listening. \
@@ -147,36 +147,9 @@ impl fmt::Display for ProbeResult {
     }
 }
 
-/// Decides from the connected networks (`true` = Private or Domain) whether
-/// the receiver may run.
-///
-/// One trusted network is enough. While a phone casts, Windows adds the
-/// direct Wi-Fi link to the phone as an extra "Unidentified network" that is
-/// always Public; that link must not switch the receiver off.
-pub fn trusted_network(connected_private: &[bool]) -> Option<bool> {
-    if connected_private.is_empty() {
-        return None;
-    }
-    Some(connected_private.iter().any(|private| *private))
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn the_direct_link_to_the_phone_does_not_make_home_untrusted() {
-        // Home Wi-Fi (Private) plus the Wi-Fi Direct link (Public).
-        assert_eq!(trusted_network(&[true, false]), Some(true));
-        assert_eq!(trusted_network(&[true]), Some(true));
-    }
-
-    #[test]
-    fn public_networks_alone_are_not_trusted() {
-        assert_eq!(trusted_network(&[false]), Some(false));
-        assert_eq!(trusted_network(&[false, false]), Some(false));
-        assert_eq!(trusted_network(&[]), None);
-    }
 
     fn started(listening: Listening) -> ProbeResult {
         ProbeResult {

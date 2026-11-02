@@ -4,15 +4,12 @@
   elevated (one UAC prompt) only for the tasks the user clicked.
 
 .PARAMETER Tasks
-  Comma-separated: network, firewall, wirelessdisplay.
-.PARAMETER Network
-  Name of the Wi-Fi network to mark Private (task "network").
+  Comma-separated: firewall, wirelessdisplay.
 .PARAMETER Program
   Full path of BudMix.exe (task "firewall").
 #>
 param(
     [string]$Tasks = "",
-    [string]$Network = "",
     [string]$Program = ""
 )
 
@@ -29,24 +26,27 @@ function Write-Log([string]$message) {
 foreach ($task in $Tasks.Split(",") | ForEach-Object { $_.Trim().ToLowerInvariant() } | Where-Object { $_ }) {
     try {
         switch ($task) {
-            "network" {
-                if (-not $Network) { throw "no network name given" }
-                # Only the network the user confirmed, never every Public one.
-                $profiles = @(Get-NetConnectionProfile | Where-Object { $_.Name -eq $Network })
-                if ($profiles.Count -eq 0) { throw "network '$Network' is not connected" }
-                foreach ($profile in $profiles) {
-                    Set-NetConnectionProfile -InterfaceIndex $profile.InterfaceIndex -NetworkCategory Private
-                }
-                Write-Log "network: '$Network' is now Private"
-            }
             "firewall" {
                 if (-not (Test-Path -LiteralPath $Program)) { throw "program not found: $Program" }
-                Get-NetFirewallRule -DisplayName "BudMix (Private networks)" -ErrorAction SilentlyContinue |
+                # "Cancel" on Windows' own firewall prompt leaves Block rules, and
+                # a Block rule beats every Allow rule.
+                Get-NetFirewallApplicationFilter -Program $Program -ErrorAction SilentlyContinue |
+                    Get-NetFirewallRule |
+                    Where-Object { $_.Direction -eq "Inbound" -and $_.Action -eq "Block" } |
                     Remove-NetFirewallRule
+                foreach ($name in "BudMix (Private networks)", "BudMix (phone cast link)") {
+                    Get-NetFirewallRule -DisplayName $name -ErrorAction SilentlyContinue |
+                        Remove-NetFirewallRule
+                }
                 New-NetFirewallRule -DisplayName "BudMix (Private networks)" `
-                    -Description "Lets a phone's Miracast cast reach BudMix on Private networks only." `
+                    -Description "Lets a phone's Miracast cast reach BudMix on Private networks." `
                     -Direction Inbound -Action Allow -Profile Private -Program $Program | Out-Null
-                Write-Log "firewall: rule added for $Program (Private only)"
+                # Windows treats the direct Wi-Fi link to the phone as Public.
+                New-NetFirewallRule -DisplayName "BudMix (phone cast link)" `
+                    -Description "Lets the sound of a casting phone reach BudMix over the direct Wi-Fi link." `
+                    -Direction Inbound -Action Allow -Profile Public -RemoteAddress LocalSubnet `
+                    -Program $Program | Out-Null
+                Write-Log "firewall: rules added for $Program"
             }
             "wirelessdisplay" {
                 Add-WindowsCapability -Online -Name "App.WirelessDisplay.Connect~~~~0.0.1.0" | Out-Null

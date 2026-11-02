@@ -93,7 +93,7 @@ export function ConnectPhoneGuide() {
         {tab === "help" && (
           <ul className="tips">
             <li>Keep BudMix running and Wi-Fi on, on both devices.</li>
-            <li>Run the setup check above: the network must be Private and the Wi-Fi card must support Miracast.</li>
+            <li>Run the setup check above: the Wi-Fi card must support Miracast.</li>
             <li>Turn the phone&apos;s Wi-Fi off and on, then open Cast again.</li>
             <li>Still nothing? Bluetooth always works: set Phone connection to Auto or Bluetooth only.</li>
           </ul>

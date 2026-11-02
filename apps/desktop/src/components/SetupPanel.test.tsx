@@ -15,12 +15,20 @@ vi.mock("../lib/api", () => ({
 
 const mocked = vi.mocked(api);
 
-const publicNetwork: CheckResult = {
-  id: "networkPrivate",
+const bluetoothOff: CheckResult = {
+  id: "bluetooth",
   status: "problem",
-  title: "Network is Public",
-  detail: '"Home Wi-Fi" is set to Public.',
-  fix: { kind: "makeNetworkPrivate", network: "Home Wi-Fi" },
+  title: "Bluetooth is off",
+  detail: "Turn Bluetooth on.",
+  fix: { kind: "openSettings", uri: "ms-settings:bluetooth" },
+};
+
+const firewall: CheckResult = {
+  id: "firewall",
+  status: "warning",
+  title: "Firewall blocks the sound of a casting phone",
+  detail: "",
+  fix: { kind: "addFirewallRule" },
 };
 
 const miracast: CheckResult = {
@@ -32,7 +40,7 @@ const miracast: CheckResult = {
 };
 
 beforeEach(() => {
-  mocked.setupChecks.mockResolvedValue([publicNetwork, miracast]);
+  mocked.setupChecks.mockResolvedValue([bluetoothOff, firewall, miracast]);
   mocked.runFix.mockResolvedValue(undefined);
 });
 
@@ -46,23 +54,23 @@ function renderPanel(done = false) {
 describe("SetupPanel", () => {
   it("lists every check with its fix", async () => {
     renderPanel();
-    const network = await screen.findByRole("listitem", { name: "Network is Public" });
-    expect(within(network).getByRole("button", { name: "Make Private (admin)" })).toBeInTheDocument();
+    const row = await screen.findByRole("listitem", { name: firewall.title });
+    expect(within(row).getByRole("button", { name: "Allow (admin)" })).toBeInTheDocument();
     const wifi = screen.getByRole("listitem", { name: "Wi-Fi card can receive Miracast" });
     expect(within(wifi).queryByRole("button")).not.toBeInTheDocument();
   });
 
   it("runs an admin fix and checks again", async () => {
     renderPanel();
-    await userEvent.click(await screen.findByRole("button", { name: "Make Private (admin)" }));
-    expect(mocked.runFix).toHaveBeenCalledWith({ kind: "makeNetworkPrivate", network: "Home Wi-Fi" });
+    await userEvent.click(await screen.findByRole("button", { name: "Allow (admin)" }));
+    expect(mocked.runFix).toHaveBeenCalledWith({ kind: "addFirewallRule" });
     expect(mocked.setupChecks).toHaveBeenCalledTimes(2);
   });
 
   it("shows why a fix failed", async () => {
     mocked.runFix.mockRejectedValue("The admin prompt was cancelled, so nothing changed.");
     renderPanel();
-    await userEvent.click(await screen.findByRole("button", { name: "Make Private (admin)" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Allow (admin)" }));
     expect(await screen.findByRole("alert")).toHaveTextContent("admin prompt was cancelled");
   });
 

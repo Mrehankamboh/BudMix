@@ -35,8 +35,6 @@ pub type CastEvents = Arc<dyn Fn(CastEvent) + Send + Sync>;
 
 /// The Wi-Fi receiver side of the operating system.
 pub trait CastBackend: Send + Sync {
-    /// See [`crate::cast`]: Private (or Domain) networks only.
-    fn network_private(&self) -> Option<bool>;
     /// Starts the receiver; `events` is called from other threads.
     fn start(&self, events: CastEvents) -> StartOutcome;
     fn stop(&self);
@@ -65,8 +63,8 @@ pub struct CastStatus {
 
 pub type CastListener = Box<dyn Fn(&CastStatus) + Send>;
 
-/// How often to look at the network profile; Windows sends no cheap event.
-const NETWORK_POLL: Duration = Duration::from_secs(10);
+/// Longest sleep when nothing is scheduled.
+const IDLE_WAKEUP: Duration = Duration::from_secs(60);
 
 enum Request {
     Event(CastEvent),
@@ -76,7 +74,7 @@ enum Request {
     Forget(String),
     SetVolume(Level),
     ShowVideo(bool),
-    CheckNetwork,
+    Refresh,
     Shutdown(Option<Sender<()>>),
 }
 
@@ -112,9 +110,10 @@ impl CastHandle {
         self.post(Request::ShowVideo(visible));
     }
 
-    /// Looks at the network now (e.g. after a Wi-Fi change or wake-up).
-    pub fn check_network(&self) {
-        self.post(Request::CheckNetwork);
+    /// Starts the receiver if it should run and a retry is due (e.g. after a
+    /// wake-up).
+    pub fn refresh(&self) {
+        self.post(Request::Refresh);
     }
 
     /// Stops the receiver; waits up to two seconds.
@@ -170,7 +169,6 @@ impl CastRuntime {
         let worker = thread::Builder::new()
             .name("budmix-cast".into())
             .spawn(move || {
-                let now = Instant::now();
                 let mut worker = Worker {
                     controller: CastController::new(
                         config.mode.uses_wifi(),
@@ -184,8 +182,6 @@ impl CastRuntime {
                     status,
                     on_update,
                     on_allowed,
-                    last_network_check: now,
-                    private: None,
                 };
                 worker.backend.set_volume(config.volume);
                 worker.run(tx, rx);
@@ -220,9 +216,6 @@ struct Worker {
     status: Arc<Mutex<Option<CastStatus>>>,
     on_update: CastListener,
     on_allowed: Box<dyn Fn(Vec<String>) + Send>,
-    last_network_check: Instant,
-    /// Last network answer, to log only changes.
-    private: Option<bool>,
 }
 
 impl Worker {
@@ -230,12 +223,12 @@ impl Worker {
         let events: CastEvents = Arc::new(move |event| {
             let _ = tx.send(Request::Event(event));
         });
-        self.check_network(&events);
+        self.refresh(&events);
         self.publish();
         let mut done = None;
         loop {
             let now = Instant::now();
-            let mut timeout = NETWORK_POLL.saturating_sub(now - self.last_network_check);
+            let mut timeout = IDLE_WAKEUP;
             for wakeup in [self.controller.next_wakeup(), self.router.next_wakeup(now)]
                 .into_iter()
                 .flatten()
@@ -248,14 +241,7 @@ impl Worker {
                     break;
                 }
                 Err(RecvTimeoutError::Disconnected) => break,
-                Err(RecvTimeoutError::Timeout) => {
-                    if self.last_network_check.elapsed() >= NETWORK_POLL {
-                        self.check_network(&events);
-                    }
-                    let actions = self.controller.tick(Instant::now());
-                    self.execute(actions, &events);
-                }
-                Ok(Request::CheckNetwork) => self.check_network(&events),
+                Err(RecvTimeoutError::Timeout) | Ok(Request::Refresh) => self.refresh(&events),
                 Ok(Request::Event(event)) => self.on_event(event, &events),
                 Ok(Request::SetMode(mode)) => {
                     self.router.set_mode(mode);
@@ -296,14 +282,8 @@ impl Worker {
         }
     }
 
-    fn check_network(&mut self, events: &CastEvents) {
-        self.last_network_check = Instant::now();
-        let private = self.backend.network_private().unwrap_or(false);
-        if self.private != Some(private) {
-            log::info!("trusted (Private) network: {private}");
-            self.private = Some(private);
-        }
-        let actions = self.controller.set_private(private, Instant::now());
+    fn refresh(&mut self, events: &CastEvents) {
+        let actions = self.controller.tick(Instant::now());
         self.execute(actions, events);
     }
 
@@ -424,8 +404,8 @@ mod tests {
     }
 
     #[test]
-    fn starts_on_a_private_network_and_plays_an_allowed_phone() {
-        let backend = Arc::new(FakeCastBackend::new(true));
+    fn starts_by_itself_and_plays_an_allowed_phone() {
+        let backend = Arc::new(FakeCastBackend::new());
         let runtime = spawn(&backend, PhoneMode::Auto, &["Infinix"]);
         let handle = runtime.handle();
         wait_for(&handle, |status| {
@@ -446,20 +426,8 @@ mod tests {
     }
 
     #[test]
-    fn stays_off_on_a_public_network() {
-        let backend = Arc::new(FakeCastBackend::new(false));
-        let runtime = spawn(&backend, PhoneMode::Auto, &[]);
-        let handle = runtime.handle();
-        let status = wait_for(&handle, |status| {
-            status.cast.receiver == ReceiverState::NotPrivate
-        });
-        assert!(!status.bluetooth_suspended);
-        assert!(!backend.started());
-    }
-
-    #[test]
     fn a_new_phone_waits_for_approval_and_is_remembered() {
-        let backend = Arc::new(FakeCastBackend::new(true));
+        let backend = Arc::new(FakeCastBackend::new());
         let saved = Arc::new(Mutex::new(Vec::new()));
         let sink = Arc::clone(&saved);
         let runtime = CastRuntime::spawn(
@@ -494,7 +462,7 @@ mod tests {
 
     #[test]
     fn bluetooth_only_mode_never_starts_the_receiver() {
-        let backend = Arc::new(FakeCastBackend::new(true));
+        let backend = Arc::new(FakeCastBackend::new());
         let runtime = spawn(&backend, PhoneMode::BluetoothOnly, &[]);
         let handle = runtime.handle();
         let status = wait_for(&handle, |status| status.cast.receiver == ReceiverState::Off);
@@ -508,7 +476,7 @@ mod tests {
 
     #[test]
     fn stop_stops_the_receiver() {
-        let backend = Arc::new(FakeCastBackend::new(true));
+        let backend = Arc::new(FakeCastBackend::new());
         let runtime = spawn(&backend, PhoneMode::Auto, &[]);
         let handle = runtime.handle();
         wait_for(&handle, |status| {
